@@ -1,0 +1,124 @@
+import streamlit as st
+import io
+import os
+from fpdf import FPDF
+
+# 1. Page Config
+st.set_page_config(page_title="Financial Tiered Calculator", page_icon="📊", layout="centered")
+
+# --- پیدا کردن هوشمند آدرس دسکتاپ در ویندوز ---
+desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+FONT_PATH = os.path.join(desktop_path, "Vazirmatn-Regular.ttf")
+
+if not os.path.exists(FONT_PATH):
+    FONT_PATH = "Vazirmatn-Regular.ttf"
+
+# 2. Main Logic Function
+def calculate_all_values(b20: float) -> dict:
+    c20 = 0
+    tier_name = "خارج از محدوده محاسبات"
+    
+    if 0 < b20 <= 50_000_000_000_000:
+        if b20 >= 50_000_000_000_000:
+            c20 = 0
+            tier_name = "بیشتر یا برابر ۵۰ تریلیون"
+        elif 4_318_333_330_000 < b20 < 50_000_000_000_000:
+            c20 = 1_350_000_000
+            tier_name = "سقف ثابت بازه آخر"
+        else:
+            brackets = [
+                {"upper": 500_000_000,         "rate": 0,          "base": 20_000_000,    "lower": 0, "name": "پله یک - زیر پانصد میلیون"},
+                {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله دو - پانصد میلیون تا یک میلیارد"},
+                {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله سه - یک تا پنج میلیارد"},
+                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله چهار - پنج تا سی میلیارد"},
+                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله پنج - سی تا صد و پنجاه میلیارد"},
+                {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله شش - صد و پنجاه تا پانصد میلیارد"},
+                {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله هفت - پانصد میلیارد تا یک تریلیون"},
+                {"upper": 2_000_000_000_000,   "rate": 0.00023,    "base": 702_250_000,   "lower": 1_000_000_000_000, "name": "پله هشت - یک تا دو تریلیون"},
+                {"upper": 4_000_000_000_000,   "rate": 0.000185,   "base": 932_250_000,   "lower": 2_000_000_000_000, "name": "پله نه - دو تا چهار تریلیون"},
+                {"upper": 4_318_333_330_000,   "rate": 0.00015,    "base": 1_302_250_000, "lower": 4_000_000_000_000, "name": "پله ده - چهار تا چهار ممیز سی و یک تریلیون"},
+            ]
+            for bracket in brackets:
+                if b20 <= bracket["upper"]:
+                    c20 = (b20 - bracket["lower"]) * bracket["rate"] + bracket["base"]
+                    tier_name = bracket["name"]
+                    break
+
+    c21 = c20 * 0.50
+    c22 = c20 + c21
+    return {"c20": c20, "c21": c21, "c22": c22, "tier": tier_name}
+
+# 3. PDF Generator Helper
+def generate_pdf_report(b20, res):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    if os.path.exists(FONT_PATH):
+        pdf.add_font("Vazir", style="", fname=FONT_PATH)
+        pdf.set_font("Vazir", size=13)
+        pdf.set_text_shaping(use_shaping_engine=True, direction="rtl")
+    else:
+        pdf.set_font("Helvetica", size=12)
+    
+    # هدر گزارش
+    pdf.set_text_color(31, 78, 120)
+    pdf.cell(180, 10, txt="گزارش رسمی محاسبات مالی دستمزد", ln=True, align="R")
+    pdf.ln(2)
+    
+    # مشخصات سیستم
+    pdf.set_text_color(89, 89, 89)
+    pdf.cell(180, 8, txt="تنظیم‌کننده: محمد هادی حجتی", ln=True, align="R")
+    pdf.cell(180, 8, txt=f"بازه محاسباتی شناسایی‌شده: {res['tier']}", ln=True, align="R")
+    pdf.ln(5)
+    
+    # خط جداکننده اول
+    pdf.set_draw_color(31, 78, 120)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(8)
+    
+    # بدنه اصلی مقادیر مالی بدون به‌هم‌ریختگی
+    pdf.set_text_color(38, 38, 38)
+    pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا (B20): {b20:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• دستمزد طبق ماده ۱۱ (C20): {res['c20']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• مبنای ماده ۲۵ (C21): {res['c21']:,.0f} ریال (پنجاه درصد از ماده ۱۱)", ln=True, align="R")
+    pdf.ln(5)
+    
+    # خط جداکننده دوم
+    pdf.set_draw_color(191, 191, 191)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(6)
+    
+    # بخش جمع کل دستمزد
+    pdf.set_text_color(46, 91, 24)
+    pdf.cell(180, 12, txt=f"◄ جمع کل دستمزد حسابرسی (C22): {res['c22']:,.0f} ریال", ln=True, align="R")
+    
+    # 🌟 تبدیل آرایه بایت خام به فرمت استاندارد بایت خروجی مورد پسند Streamlit
+    pdf_output = pdf.output()
+    return bytes(pdf_output)
+
+# 4. Streamlit UI Layout
+st.title("📊 داشبورد محاسبات پلکانی دستمزد")
+st.caption("🔒 محیط کاملاً خصوصی و محلی | تنظیم‌کننده: *محمد هادی حجتی*")
+st.write("---")
+
+b20_input = st.number_input("مقدار ورودی مبنا (B20) را وارد کنید:", min_value=0.0, value=1_000_000_000.0, step=500_000.0)
+
+if b20_input > 0:
+    results = calculate_all_values(b20_input)
+    
+    st.success(f"بازه شناسایی‌شده: {results['tier']}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("دستمزد ماده ۱۱ (C20)", f"{results['c20']:,.0f}")
+    col2.metric("ماده ۲۵ (C21)", f"{results['c21']:,.0f}")
+    col3.metric("جمع کل دستمزد (C22)", f"{results['c22']:,.0f}")
+    
+    try:
+        pdf_data = generate_pdf_report(b20_input, results)
+        st.download_button(
+            label="📥 دانلود گزارش رسمی PDF",
+            data=pdf_data,
+            file_name="financial_report.pdf",
+            mime="application/pdf"
+        )
+    except Exception as e:
+        st.error(f"خطا در تولید فایل PDF: {e}")
