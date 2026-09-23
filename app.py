@@ -1,12 +1,14 @@
+
 import streamlit as st
 import io
 import os
+import base64
 from fpdf import FPDF
 
 # 1. Page Config
 st.set_page_config(page_title="Financial Tiered Calculator", page_icon="📊", layout="centered")
 
-# --- پیدا کردن هوشمند آدرس دسکتاپ در ویندوز ---
+# --- پیدا کردن هوشمند آدرس دسکتاپ در ویندوز یا سرور ---
 desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
 FONT_PATH = os.path.join(desktop_path, "Vazirmatn-Regular.ttf")
 
@@ -60,39 +62,32 @@ def generate_pdf_report(b20, res):
     else:
         pdf.set_font("Helvetica", size=12)
     
-    # هدر گزارش
     pdf.set_text_color(31, 78, 120)
     pdf.cell(180, 10, txt="گزارش رسمی محاسبات مالی دستمزد", ln=True, align="R")
     pdf.ln(2)
     
-    # مشخصات سیستم
     pdf.set_text_color(89, 89, 89)
-    pdf.cell(180, 8, txt="تنظیم‌کننده: محمد هادی حجتی", ln=True, align="R")
-    pdf.cell(180, 8, txt=f"بازه محاسباتی شناسایی‌شده: {res['tier']}", ln=True, align="R")
+    pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتی", ln=True, align="R")
+    pdf.cell(180, 8, txt=f"بازه محاسباتی شناسایی شده: {res['tier']}", ln=True, align="R")
     pdf.ln(5)
     
-    # خط جداکننده اول
     pdf.set_draw_color(31, 78, 120)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(8)
     
-    # بدنه اصلی مقادیر مالی بدون به‌هم‌ریختگی
     pdf.set_text_color(38, 38, 38)
     pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا (B20): {b20:,.0f} ریال", ln=True, align="R")
     pdf.cell(180, 10, txt=f"• دستمزد طبق ماده ۱۱ (C20): {res['c20']:,.0f} ریال", ln=True, align="R")
     pdf.cell(180, 10, txt=f"• مبنای ماده ۲۵ (C21): {res['c21']:,.0f} ریال (پنجاه درصد از ماده ۱۱)", ln=True, align="R")
     pdf.ln(5)
     
-    # خط جداکننده دوم
     pdf.set_draw_color(191, 191, 191)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(6)
     
-    # بخش جمع کل دستمزد
     pdf.set_text_color(46, 91, 24)
     pdf.cell(180, 12, txt=f"◄ جمع کل دستمزد حسابرسی (C22): {res['c22']:,.0f} ریال", ln=True, align="R")
     
-    # 🌟 تبدیل آرایه بایت خام به فرمت استاندارد بایت خروجی مورد پسند Streamlit
     pdf_output = pdf.output()
     return bytes(pdf_output)
 
@@ -101,7 +96,14 @@ st.title("📊 داشبورد محاسبات پلکانی دستمزد")
 st.caption("🔒 محیط کاملاً خصوصی و محلی | تنظیم‌کننده: *محمد هادی حجتی*")
 st.write("---")
 
-b20_input = st.number_input("مقدار ورودی مبنا (B20) را وارد کنید:", min_value=0.0, value=1_000_000_000.0, step=500_000.0)
+# کادر متنی تمیز بدون دکمه‌های اضافه
+b20_str = st.text_input("مقدار ورودی مبنا (B20) را به ریال وارد کنید:", value="1000000000")
+
+b20_input = 0.0
+if b20_str:
+    clean_str = b20_str.replace(",", "").replace(" ", "")
+    if clean_str.isdigit():
+        b20_input = float(clean_str)
 
 if b20_input > 0:
     results = calculate_all_values(b20_input)
@@ -114,11 +116,18 @@ if b20_input > 0:
     
     try:
         pdf_data = generate_pdf_report(b20_input, results)
+        
         st.download_button(
-            label="📥 دانلود گزارش رسمی PDF",
+            label="📥 دانلود مستقیم فایل PDF (نسخه کامپیوتر و اندروید)",
             data=pdf_data,
             file_name="financial_report.pdf",
             mime="application/pdf"
         )
+        
+        # 🌟 اصلاح پارامتر آرگومان به استاندار و بدون خطای استریم‌لیت
+        b64 = base64.b64encode(pdf_data).decode()
+        href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf" style="display: inline-block; padding: 0.5em 1em; color: white; background-color: #2e5b18; text-decoration: none; border-radius: 4px; font-weight: bold; text-align: center; margin-top: 10px; width: 100%;">🔗 لینک کمکی دانلود PDF (مخصوص آیفون و مرورگر گوشی)</a>'
+        st.markdown(href, unsafe_allow_html=True)
+        
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
