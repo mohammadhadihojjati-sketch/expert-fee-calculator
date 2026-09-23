@@ -95,17 +95,14 @@ st.title("📊 داشبورد محاسبات پلکانی دستمزد")
 st.caption("🔒 محیط کاملاً خصوصی و محلی | تنظیم‌کننده: *محمد هادی حجتی*")
 st.write("---")
 
-# باکس دریافت ورودی از کاربر
 raw_b20 = st.text_input("مقدار ورودی مبنا (B20) را به ریال وارد کنید:", value="1,000,000,000")
 
-# 🌟 هوشمندسازی: فرمت‌دهی خودکار و جدا کردن سه رقم سه رقم به محض تایپ کاربر
 clean_str = raw_b20.replace(",", "").replace(" ", "")
 b20_input = 0.0
 
 if clean_str.isdigit():
     b20_input = float(clean_str)
     formatted_str = f"{int(b20_input):,}"
-    # در صورتی که کاربر ویرگول‌ها را جا انداخته باشد، متن راهنما زیر باکس تغییر می‌کند
     st.info(f"💵 مبلغ پردازش شده سیستم: {formatted_str} ریال")
 
 if b20_input > 0:
@@ -120,16 +117,16 @@ if b20_input > 0:
     try:
         pdf_data = generate_pdf_report(b20_input, results)
         
-        # 🌟 متد دانلود انقلابی و ۱۰۰٪ سازگار با تمام نسخه‌های موبایل
+        # 🌟 تغییر معماری دانلود: باز کردن PDF در تب جدید به جای دانلود کورکورانه فایل داده
         b64 = base64.b64encode(pdf_data).decode()
         
-        # طراحی دکمه بومی HTML که قفل دانلود تمام مرورگرهای گوشی را می‌شکند
-        mobile_download_btn = f'''
-            <a href="data:application/pdf;base64,{b64}" download="financial_report.pdf" target="_blank" style="
+        # دکمه با مکانیزم باز شدن در تب جدید (تضمین کارکرد در تمام گوشی‌ها)
+        open_pdf_html = f'''
+            <a href="data:application/pdf;base64,{b64}" target="_blank" style="
                 display: block;
                 width: 100%;
                 text-align: center;
-                background-color: #ff4b4b;
+                background-color: #007bff;
                 color: white;
                 padding: 12px 20px;
                 margin: 10px 0;
@@ -139,9 +136,10 @@ if b20_input > 0:
                 font-weight: bold;
                 text-decoration: none;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            ">📥 پرینت و دانلود نهایی فایل PDF (ویژه گوشی و کامپیوتر)</a>
+            ">📄 باز کردن و پرینت فایل PDF گزارش</a>
         '''
-        st.markdown(mobile_download_btn, unsafe_allow_html=True)
+        st.markdown(open_pdf_html, unsafe_allow_html=True)
+        st.caption("💡 پس از کلیک روی دکمه آبی فوق، گزارش در صفحه جدید باز می‌شود؛ سپس می‌توانید آن را ذخیره یا پرینت کنید.")
         
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
