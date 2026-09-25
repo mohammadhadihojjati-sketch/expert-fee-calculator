@@ -1,0 +1,160 @@
+Python 3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)] on win32
+Enter "help" below or click "Help" above for more information.
+import streamlit as st
+import io
+import urllib.request
+import os
+import arabic_reshaper
+from bidi.algorithm import get_display
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttcounts import TTFont
+
+# 1. Page Config
+st.set_page_config(page_title="Financial Tiered Calculator", page_icon="📊", layout="centered")
+
+# --- Persian Font Downloader & Injector ---
+FONT_PATH = "Vazirmatn-Regular.ttf"
+if not os.path.exists(FONT_PATH):
+    try:
+        url = "https://github.com"
+        urllib.request.urlretrieve(url, FONT_PATH)
+    except Exception:
+        pass
+
+if os.path.exists(FONT_PATH):
+    pdfmetrics.registerFont(TTFont('Vazirmatn', FONT_PATH))
+    FONT_NAME = 'Vazirmatn'
+else:
+    FONT_NAME = 'Helvetica'
+
+# Helper function to fix Persian text reversal in PDFs
+def f(text):
+    if FONT_NAME == 'Helvetica':
+        return text
+    reshaped = arabic_reshaper.reshape(text)
+    return get_display(reshaped)
+
+# 2. Main Logic Function
+def calculate_all_values(b20: float) -> dict:
+    c20 = 0
+    tier_name = "خارج از محدوده محاسبات"
+    
+    if 0 < b20 <= 50_000_000_000_000:
+        if b20 >= 50_000_000_000_000:
+            c20 = 0
+            tier_name = "بیشتر یا برابر ۵۰ تریلیون"
+        elif 4_318_333_330_000 < b20 < 50_000_000_000_000:
+            c20 = 1_350_000_000
+            tier_name = "سقف ثابت بازه آخر"
+        else:
+            brackets = [
+                {"upper": 500_000_000,         "rate": 0,          "base": 20_000_000,    "lower": 0, "name": "پله ۱ (زیر ۵۰۰ میلیون)"},
+                {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله ۲ (۵۰۰ میلیون تا ۱ میلیارد)"},
+                {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله ۳ (۱ تا ۵ میلیارد)"},
+                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله ۴ (۵ تا ۳۰ میلیارد)"},
+                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵۰ میلیارد)"},
+                {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله ۶ (۱۵۰ تا ۵۰۰ میلیارد)"},
+                {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله ۷ (۵۰۰ میلیارد تا ۱ تریلیون)"},
+                {"upper": 2_000_000_000_000,   "rate": 0.00023,    "base": 702_250_000,   "lower": 1_000_000_000_000, "name": "پله ۸ (۱ تا ۲ تریلیون)"},
+                {"upper": 4_000_000_000_000,   "rate": 0.000185,   "base": 932_250_000,   "lower": 2_000_000_000_000, "name": "پله ۹ (۲ تا ۴ تریلیون)"},
+                {"upper": 4_318_333_330_000,   "rate": 0.00015,    "base": 1_302_250_000, "lower": 4_000_000_000_000, "name": "پله ۱۰ (۴ تا ۴.۳۱۸ تریلیون)"},
+            ]
+            for bracket in brackets:
+                if b20 <= bracket["upper"]:
+                    c20 = (b20 - bracket["lower"]) * bracket["rate"] + bracket["base"]
+                    tier_name = bracket["name"]
+                    break
+
+    c21 = c20 * 0.50
+    c22 = c20 + c21
+    return {"c20": c20, "c21": c21, "c22": c22, "tier": tier_name}
+
+# 3. PDF Generator Helper
+def generate_pdf_report(b20, res):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    story = []
+    
+    # Custom Persian Typography styles
+    p_right = ParagraphStyle('PRight', fontName=FONT_NAME, fontSize=11, leading=16, alignment=2) # Right align
+    p_right_bold = ParagraphStyle('PRightBold', fontName=FONT_NAME, fontSize=11, leading=16, alignment=2, textColor=colors.HexColor('#1F4E78'))
+    title_style = ParagraphStyle('TitleStyle', fontName=FONT_NAME, fontSize=18, leading=22, alignment=2, textColor=colors.HexColor('#1F4E78'), spaceAfter=15)
+
+    # Document Header Elements
+    story.append(Paragraph(f("{'گزارش رسمی محاسبات مالی دستمزد'}"), title_style))
+    story.append(Paragraph(f("تنظیم‌کننده: نام شما در اینجا"), p_right)) # 📝 CHANGE THIS LINE (Line 58)
+    story.append(Paragraph(f"بازه محاسباتی شناسایی‌شده: {res['tier']}", p_right))
+    story.append(Spacer(1, 15))
+    
+    # Table Data - Reversed column orders (Right-to-Left friendly mapping layout)
+    table_data = [
+        [Paragraph(f("مقدار محاسبه‌شده"), p_right_bold), Paragraph(f("قاعده محاسباتی / منبع"), p_right_bold), Paragraph(f("مؤلفه مالی"), p_right_bold)],
+        [Paragraph(f"{b20:,.0f}", p_right), Paragraph(f("ورودی مبنای سیستم"), p_right), Paragraph(f("مقدار ورودی (B20)"), p_right)],
+        [Paragraph(f"{res['c20']:,.0f}", p_right), Paragraph(f("محاسبه طبق پله‌های جدول مالی"), p_right), Paragraph(f("دستمزد طبق ماده ۱۱ (C20)"), p_right)],
+        [Paragraph(f"{res['c21']:,.0f}", p_right), Paragraph(f("۵۰ درصد از ماده ۱۱"), p_right), Paragraph(f("ماده ۲۵ (C21)"), p_right)],
+        [Paragraph(f"{res['c22']:,.0f}", p_right), Paragraph(f("مجموع متغیر C20 و C21"), p_right), Paragraph(f("جمع دستمزد حسابرسی (C22)"), p_right_bold)]
+    ]
+    
+    financial_table = Table(table_data, colWidths=)
+    financial_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#D9E1F2')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#BFBFBF')),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2EFDA')), # Mark last row green
+    ]))
+    
+    story.append(financial_table)
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+# 4. Streamlit UI Layout
+st.title("📊 داشبورد محاسبات پلکانی دستمزد")
+st.caption("🔒 محیط کاملاً خصوصی و محلی | تنظیم‌کننده: **" محمد هادی حجتی"**") # 📝 CHANGE THIS LINE (Line 84)
+st.write("---")
+
+b20_input = st.number_input(
+    "مقدار ورودی مبنا را وارد کنید (B20):", 
+    min_value=0.0, 
+...     value=3_000_000_000_000.0, 
+...     step=1_000_000_000.0,
+...     format="%f"
+... )
+... 
+... st.info(f"🔎 **مقدار در حال پردازش فعلی:** {b20_input:,.0f}")
+... res = calculate_all_values(b20_input)
+... 
+... st.subheader("🎯 شاخص‌های خروجی آنی")
+... col1, col2, col3 = st.columns(3)
+... with col1:
+...     st.metric(label="دستمزد طبق ماده ۱۱ (C20)", value=f"{res['c20']:,.0f}")
+... with col2:
+...     st.metric(label="ماده ۲۵ (C21)", value=f"{res['c21']:,.0f}")
+... with col3:
+...     st.metric(label="جمع دستمزد حسابرسی (C22)", value=f"{res['c22']:,.0f}")
+... 
+... st.success(f"📌 **پله مالی فعال:** {res['tier']}")
+... 
+... # Display Data Table Layout
+... st.subheader("📋 جدول نمای دقیق تراز مالی")
+... st.table({
+...     "عنوان سطر مالی": ["مقدار ورودی مبنا (B20)", "دستمزد طبق ماده ۱۱ (C20)", "ماده ۲۵ (C21)", "جمع دستمزد حسابرسی (C22)"],
+...     "مقدار خروجی عددی": [f"{b20_input:,.0f}", f"{res['c20']:,.0f}", f"{res['c21']:,.0f}", f"{res['c22']:,.0f}"],
+...     "منطق و قاعده اعمال‌شده": ["ورودی خام سیستم", "محاسبه پلکانی مصوب", "C20 * 50%", "C20 + C21"]
+... })
+... 
+... # 5. PDF Export Interaction Widget Button Action
+... st.subheader("📥 ابزارهای استخراج گزارش")
+... pdf_bytes = generate_pdf_report(b20_input, res)
+... 
+... st.download_button(
+...     label="📄 دانلود رسمی گزارش PDF جمع دستمزد حسابرسی",
+...     data=pdf_bytes,
+...     file_name="financial_statement_report.pdf",
+...     mime="application/pdf"

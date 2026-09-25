@@ -5,7 +5,67 @@ import base64
 from fpdf import FPDF
 
 # 1. Page Config
-st.set_page_config(page_title="Financial Tiered Calculator", page_icon="📊", layout="centered")
+st.set_page_config(page_title="داشبورد محاسبات دستمزد ۱۴۰۵", page_icon="📊", layout="centered")
+
+# --- تزریق کدهای CSS برای زیباسازی پیشرفته محیط Streamlit ---
+st.markdown("""
+    <style>
+    @import url('https://jsdelivr.net');
+    
+    /* اعمال فونت وزیر و راست‌چین کردن کل صفحه */
+    html, body, [data-testid="stAppViewContainer"], .stApp {
+        font-family: 'Vazirmatn', sans-serif !important;
+        direction: RTL !important;
+        text-align: right !important;
+        background-color: #f8f9fa;
+    }
+    
+    /* زیباسازی کادر ورودی متن */
+    div[data-testid="stTextInput"] input {
+        direction: LTR !important;
+        text-align: center !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        border-radius: 10px !important;
+        border: 2px solid #dfe4ea !important;
+        padding: 12px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    }
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #1f4e78 !important;
+        box-shadow: 0 0 8px rgba(31, 78, 120, 0.2) !important;
+    }
+    
+    /* ساخت کادرهای سایه‌دار مالی (Cards) برای نمایش نتایج */
+    .result-card {
+        background-color: #ffffff;
+        border-right: 5px solid #1f4e78;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .result-card.total {
+        border-right: 5px solid #2e5b18;
+        background-color: #f4faf0;
+    }
+    .card-title {
+        font-size: 14px;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+    .card-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #212529;
+    }
+    
+    /* زیباسازی متون راهنما */
+    label, p, span, h1 {
+        font-family: 'Vazirmatn', sans-serif !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- پیدا کردن هوشمند آدرس دسکتاپ در ویندوز یا سرور ---
 desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
@@ -28,16 +88,16 @@ def calculate_all_values(b20: float) -> dict:
             tier_name = "سقف ثابت بازه آخر"
         else:
             brackets = [
-                {"upper": 500_000_000,         "rate": 0,          "base": 20_000_000,    "lower": 0, "name": "پله یک - زیر پانصد میلیون"},
-                {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله دو - پانصد میلیون تا یک میلیارد"},
-                {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله سه - یک تا پنج میلیارد"},
-                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله چهار - پنج تا سی میلیارد"},
-                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله پنج - سی تا صد و پنجاه میلیارد"},
-                {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله شش - صد و پنجاه تا پانصد میلیارد"},
-                {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله هفت - پانصد میلیارد تا یک تریلیون"},
-                {"upper": 2_000_000_000_000,   "rate": 0.00023,    "base": 702_250_000,   "lower": 1_000_000_000_000, "name": "پله هشت - یک تا دو تریلیون"},
-                {"upper": 4_000_000_000_000,   "rate": 0.000185,   "base": 932_250_000,   "lower": 2_000_000_000_000, "name": "پله نه - دو تا چهار تریلیون"},
-                {"upper": 4_318_333_330_000,   "rate": 0.00015,    "base": 1_302_250_000, "lower": 4_000_000_000_000, "name": "پله ده - چهار تا چهار ممیز سی و یک تریلیون"},
+                {"upper": 500_000_000,         "rate": 0,          "base": 20_000_000,    "lower": 0, "name": "پله ۱ (زیر ۵۰۰ میلیون ریال)"},
+                {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله ۲ (۵۰۰ میلیون تا ۱ میلیارد ریال)"},
+                {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله ۳ (۱ تا ۵ میلیارد ریال)"},
+                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله ۴ (۵ تا ۳۰ میلیارد ریال)"},
+                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵۰ میلیارد ریال)"},
+                {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله ۶ (۱۵۰ تا ۵۰۰ میلیارد ریال)"},
+                {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله ۷ (۵۰۰ میلیارد تا ۱ تریلیون ریال)"},
+                {"upper": 2_000_000_000_000,   "rate": 0.00023,    "base": 702_250_000,   "lower": 1_000_000_000_000, "name": "پله ۸ (۱ تا ۲ تریلیون ریال)"},
+                {"upper": 4_000_000_000_000,   "rate": 0.000185,   "base": 932_250_000,   "lower": 2_000_000_000_000, "name": "پله ۹ (۲ تا ۴ تریلیون ریال)"},
+                {"upper": 4_318_333_330_000,   "rate": 0.00015,    "base": 1_302_250_000, "lower": 4_000_000_000_000, "name": "پله ۱۰ (۴ تا ۴.۳۱ تریلیون ریال)"},
             ]
             for bracket in brackets:
                 if b20 <= bracket["upper"]:
@@ -91,55 +151,70 @@ def generate_pdf_report(b20, res):
     return bytes(pdf_output)
 
 # 4. Streamlit UI Layout
-st.title("📊 داشبورد محاسبات پلکانی دستمزد")
-st.caption("🔒 محیط کاملاً خصوصی و محلی | تنظیم‌کننده: *محمد هادی حجتی*")
+st.title("📊 سیستم هوشمند محاسبه دستمزد حسابرسی")
+st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
 
-raw_b20 = st.text_input("مقدار ورودی مبنا (B20) را به ریال وارد کنید:", value="1,000,000,000")
+# کادر متنی تمیز و مرتب
+b20_str = st.text_input("مقدار ورودی مبنا (B20) را به ریال وارد کنید:", value="1,000,000,000")
 
-clean_str = raw_b20.replace(",", "").replace(" ", "")
 b20_input = 0.0
-
-if clean_str.isdigit():
-    b20_input = float(clean_str)
-    formatted_str = f"{int(b20_input):,}"
-    st.info(f"💵 مبلغ پردازش شده سیستم: {formatted_str} ریال")
+if b20_str:
+    clean_str = b20_str.replace(",", "").replace(" ", "")
+    if clean_str.isdigit():
+        b20_input = float(clean_str)
 
 if b20_input > 0:
     results = calculate_all_values(b20_input)
     
-    st.success(f"بازه شناسایی‌شده: {results['tier']}")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("دستمزد ماده ۱۱ (C20)", f"{results['c20']:,.0f}")
-    col2.metric("ماده ۲۵ (C21)", f"{results['c21']:,.0f}")
-    col3.metric("جمع کل دستمزد (C22)", f"{results['c22']:,.0f}")
+    # نمایش بازه به صورت شکیل
+    st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
+    
+    # ساخت ستون‌ها با طراحی اختصاصی کادرهای مالی (Card Layout)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown(f"""
+            <div class="result-card">
+                <div class="card-title">دستمزد پایه (ماده ۱۱)</div>
+                <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+    with col2:
+        st.markdown(f"""
+            <div class="result-card">
+                <div class="card-title">افزایش حسابرسی (۵۰٪ ماده ۲۵)</div>
+                <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+    # کادر مجزا برای جمع کل نهایی
+    st.markdown(f"""
+        <div class="result-card total">
+            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت (C22)</div>
+            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.write("")
     
     try:
         pdf_data = generate_pdf_report(b20_input, results)
         
-        # 🌟 تغییر معماری دانلود: باز کردن PDF در تب جدید به جای دانلود کورکورانه فایل داده
-        b64 = base64.b64encode(pdf_data).decode()
+        # دکمه اصلی دانلود
+        st.download_button(
+            label="📥 دانلود مستقیم فایل PDF گزارش رسمی",
+            data=pdf_data,
+            file_name="financial_report.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
         
-        # دکمه با مکانیزم باز شدن در تب جدید (تضمین کارکرد در تمام گوشی‌ها)
-        open_pdf_html = f'''
-            <a href="data:application/pdf;base64,{b64}" target="_blank" style="
-                display: block;
-                width: 100%;
-                text-align: center;
-                background-color: #007bff;
-                color: white;
-                padding: 12px 20px;
-                margin: 10px 0;
-                border: none;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: bold;
-                text-decoration: none;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            ">📄 باز کردن و پرینت فایل PDF گزارش</a>
-        '''
-        st.markdown(open_pdf_html, unsafe_allow_html=True)
-        st.caption("💡 پس از کلیک روی دکمه آبی فوق، گزارش در صفحه جدید باز می‌شود؛ سپس می‌توانید آن را ذخیره یا پرینت کنید.")
+        # لینک کمکی موبایل
+        b64 = base64.b64encode(pdf_data).decode()
+        href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf" style="display: inline-block; padding: 12px; color: white; background-color: #1f4e78; text-decoration: none; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 10px; width: 100%;">🔗 لینک کمکی دانلود PDF (مخصوص مرورگر گوشی و آیفون)</a>'
+        st.markdown(href, unsafe_allow_html=True)
         
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
