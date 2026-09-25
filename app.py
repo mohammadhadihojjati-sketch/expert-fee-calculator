@@ -5,74 +5,90 @@ import base64
 from fpdf import FPDF
 
 # 1. Page Config
-st.set_page_config(page_title="داشبورد محاسبات دستمزد ۱۴۰۵", page_icon="📊", layout="centered")
+st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS برای زیباسازی پیشرفته محیط Streamlit ---
+# --- تزریق کدهای جدید و قطعی برای زرد کردن کادر ورودی متن ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
     
-    /* اعمال فونت وزیر و راست‌چین کردن کل صفحه */
+    /* اعمال فونت وزیر و راست‌چین کردن کامل اپلیکیشن */
     html, body, [data-testid="stAppViewContainer"], .stApp {
         font-family: 'Vazirmatn', sans-serif !important;
         direction: RTL !important;
         text-align: right !important;
-        background-color: #f8f9fa;
+        background-color: #f8f9fa !important;
     }
     
-    /* زیباسازی کادر ورودی متن */
+    /* 🌟 زرد کردن قطعی کادر ورودی با شناسه‌های والد استریم‌لیت */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
-        font-size: 18px !important;
+        font-size: 20px !important;
         font-weight: bold !important;
-        border-radius: 10px !important;
-        border: 2px solid #dfe4ea !important;
-        padding: 12px !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
-    }
-    div[data-testid="stTextInput"] input:focus {
-        border-color: #1f4e78 !important;
-        box-shadow: 0 0 8px rgba(31, 78, 120, 0.2) !important;
+        border-radius: 12px !important;
+        border: 2px solid #f1c40f !important; /* حاشیه طلایی/زرد */
+        background-color: #fef9e7 !important; /* پس‌زمینه زرد ملایم حسابداری */
+        color: #2c3e50 !important;
+        padding: 14px !important;
     }
     
-    /* ساخت کادرهای سایه‌دار مالی (Cards) برای نمایش نتایج */
+    /* استایل کادرهای مالی خروجی نتایج */
     .result-card {
-        background-color: #ffffff;
-        border-right: 5px solid #1f4e78;
-        border-radius: 8px;
-        padding: 20px;
-        margin: 15px 0;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        background-color: #ffffff !important;
+        border-right: 6px solid #1f4e78 !important;
+        border-radius: 10px !important;
+        padding: 18px !important;
+        margin: 12px 0 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
     }
     .result-card.total {
-        border-right: 5px solid #2e5b18;
-        background-color: #f4faf0;
+        border-right: 6px solid #2e5b18 !important;
+        background-color: #f4faf0 !important;
     }
     .card-title {
-        font-size: 14px;
-        color: #6c757d;
-        margin-bottom: 5px;
+        font-size: 14px !important;
+        color: #6c757d !important;
+        margin-bottom: 6px !important;
+        font-weight: bold !important;
     }
     .card-value {
-        font-size: 24px;
-        font-weight: bold;
-        color: #212529;
+        font-size: 22px !important;
+        font-weight: bold !important;
+        color: #212529 !important;
     }
     
-    /* زیباسازی متون راهنما */
-    label, p, span, h1 {
+    /* نمایش بزرگ مبالغ پردازش شده بالای کادر */
+    .processed-amount {
+        background-color: #ebf5fb;
+        border-left: 5px solid #2980b9;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #1b4f72;
+        margin-bottom: 15px;
+        text-align: center;
+        direction: LTR;
+    }
+    
+    h1, h2, h3, p, span, label {
         font-family: 'Vazirmatn', sans-serif !important;
+        text-align: right !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- پیدا کردن هوشمند آدرس دسکتاپ در ویندوز یا سرور ---
-desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-FONT_PATH = os.path.join(desktop_path, "Vazirmatn-Regular.ttf")
+FONT_PATH = "Vazirmatn-Regular.ttf"
 
-if not os.path.exists(FONT_PATH):
-    FONT_PATH = "Vazirmatn-Regular.ttf"
+# تابع تبدیل عدد به حروف فارسی ساده
+def num_to_words(num: float) -> str:
+    # این تابع برای مبالغ رایج کارشناسی جهت تایید چشمی کاربر است
+    if num == 1_000_000_000: return "یک میلیارد"
+    if num == 10_000_000_000: return "ده میلیارد"
+    if num == 100_000_000: return "صد میلیون"
+    if num == 500_000_000: return "پانصد میلیون"
+    return ""
 
 # 2. Main Logic Function
 def calculate_all_values(b20: float) -> dict:
@@ -91,7 +107,7 @@ def calculate_all_values(b20: float) -> dict:
                 {"upper": 500_000_000,         "rate": 0,          "base": 20_000_000,    "lower": 0, "name": "پله ۱ (زیر ۵۰۰ میلیون ریال)"},
                 {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله ۲ (۵۰۰ میلیون تا ۱ میلیارد ریال)"},
                 {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله ۳ (۱ تا ۵ میلیارد ریال)"},
-                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله ۴ (۵ تا ۳۰ میلیارد ریال)"},
+                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله ۴ (۵ تا سی میلیارد ریال)"},
                 {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵۰ میلیارد ریال)"},
                 {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله ۶ (۱۵۰ تا ۵۰۰ میلیارد ریال)"},
                 {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله ۷ (۵۰۰ میلیارد تا ۱ تریلیون ریال)"},
@@ -105,9 +121,10 @@ def calculate_all_values(b20: float) -> dict:
                     tier_name = bracket["name"]
                     break
 
-    c21 = c20 * 0.50
-    c22 = c20 + c21
-    return {"c20": c20, "c21": c21, "c22": c22, "tier": tier_name}
+    c20_val = c20
+    c21_val = c20 * 0.50
+    c22_val = c20 + c21_val
+    return {"c20": c20_val, "c21": c21_val, "c22": c22_val, "tier": tier_name}
 
 # 3. PDF Generator Helper
 def generate_pdf_report(b20, res):
@@ -121,23 +138,23 @@ def generate_pdf_report(b20, res):
     else:
         pdf.set_font("Helvetica", size=12)
     
+    pdf.set_draw_color(31, 78, 120)
+    pdf.line(15, pdf.get_y() + 15, 195, pdf.get_y() + 15)
+    
     pdf.set_text_color(31, 78, 120)
-    pdf.cell(180, 10, txt="گزارش رسمی محاسبات مالی دستمزد", ln=True, align="R")
+    pdf.cell(180, 10, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
     pdf.ln(2)
     
     pdf.set_text_color(89, 89, 89)
     pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتی", ln=True, align="R")
-    pdf.cell(180, 8, txt=f"بازه محاسباتی شناسایی شده: {res['tier']}", ln=True, align="R")
+    pdf.cell(180, 8, txt=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
     pdf.ln(5)
     
-    pdf.set_draw_color(31, 78, 120)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(8)
-    
     pdf.set_text_color(38, 38, 38)
-    pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا (B20): {b20:,.0f} ریال", ln=True, align="R")
-    pdf.cell(180, 10, txt=f"• دستمزد طبق ماده ۱۱ (C20): {res['c20']:,.0f} ریال", ln=True, align="R")
-    pdf.cell(180, 10, txt=f"• مبنای ماده ۲۵ (C21): {res['c21']:,.0f} ریال (پنجاه درصد از ماده ۱۱)", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
     pdf.ln(5)
     
     pdf.set_draw_color(191, 191, 191)
@@ -145,18 +162,18 @@ def generate_pdf_report(b20, res):
     pdf.ln(6)
     
     pdf.set_text_color(46, 91, 24)
-    pdf.cell(180, 12, txt=f"◄ جمع کل دستمزد حسابرسی (C22): {res['c22']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 12, txt=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
     
-    pdf_output = pdf.output()
-    return bytes(pdf_output)
+    return bytes(pdf.output())
 
 # 4. Streamlit UI Layout
-st.title("📊 سیستم هوشمند محاسبه دستمزد حسابرسی")
+st.title("📊 محاسبه دستمزد کارشناسی ۱۴آ۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
 
-# کادر متنی تمیز و مرتب
-b20_str = st.text_input("مقدار ورودی مبنا (B20) را به ریال وارد کنید:", value="1,000,000,000")
+# مقدار اولیه برای پردازش اول
+initial_val = "1000000000"
+b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value=initial_val)
 
 b20_input = 0.0
 if b20_str:
@@ -165,56 +182,31 @@ if b20_str:
         b20_input = float(clean_str)
 
 if b20_input > 0:
-    results = calculate_all_values(b20_input)
+    # 🌟 بازگرداندن بخش «مبلغ پردازش شده» به صورت بسیار بزرگ، تفکیک‌شده و خوانا بالای نتایج
+    formatted_preview = f"{int(b20_input):,}"
+    words_preview = num_to_words(b20_input)
+    words_text = f" ({words_preview} ریال)" if words_preview else ""
     
-    # نمایش بازه به صورت شکیل
+    st.markdown(f'<div class="processed-amount">🔹 مبلغ پردازش شده: {formatted_preview} ریال {words_text}</div>', unsafe_allow_html=True)
+
+    results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # ساخت ستون‌ها با طراحی اختصاصی کادرهای مالی (Card Layout)
     col1, col2 = st.columns(2)
-    
     with col1:
-        st.markdown(f"""
-            <div class="result-card">
-                <div class="card-title">دستمزد پایه (ماده ۱۱)</div>
-                <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
-            </div>
-        """, unsafe_allow_html=True)
-        
+        st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown(f"""
-            <div class="result-card">
-                <div class="card-title">افزایش حسابرسی (۵۰٪ ماده ۲۵)</div>
-                <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="result-card"><div class="card-title">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
         
-    # کادر مجزا برای جمع کل نهایی
-    st.markdown(f"""
-        <div class="result-card total">
-            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت (C22)</div>
-            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 28px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     
     st.write("")
-    
     try:
         pdf_data = generate_pdf_report(b20_input, results)
+        st.download_button(label="📥 دانلود مستقیم فایل PDF گزارش رسمی", data=pdf_data, file_name="financial_report.pdf", mime="application/pdf", use_container_width=True)
         
-        # دکمه اصلی دانلود
-        st.download_button(
-            label="📥 دانلود مستقیم فایل PDF گزارش رسمی",
-            data=pdf_data,
-            file_name="financial_report.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
-        
-        # لینک کمکی موبایل
         b64 = base64.b64encode(pdf_data).decode()
-        href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf" style="display: inline-block; padding: 12px; color: white; background-color: #1f4e78; text-decoration: none; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 10px; width: 100%;">🔗 لینک کمکی دانلود PDF (مخصوص مرورگر گوشی و آیفون)</a>'
+        href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf" style="display: inline-block; padding: 12px; color: white; background-color: #1f4e78; text-decoration: none; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 10px; width: 100%;">🔗 لینک کمکی دانلود PDF (مخصوص مرورگر گوشی)</a>'
         st.markdown(href, unsafe_allow_html=True)
-        
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
