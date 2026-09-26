@@ -1,13 +1,11 @@
 import streamlit as st
 import io
 import os
-import base64
-from fpdf import FPDF
 
-# 1. Page Config (تعریف مشخصات تب)
+# 1. Page Config
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS پیشرفته برای موبایل و زرد کردن کادر ورودی ---
+# --- تزریق کدهای CSS پیشرفته برای موبایل، کادر زرد و آماده‌سازی پرینت ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -20,7 +18,7 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* زرد کردن قطعی کادر ورودی عدد */
+    /* زرد کردن قطعی کادر ورودی عدد حسابداری */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -33,7 +31,7 @@ st.markdown("""
         padding: 14px !important;
     }
     
-    /* استایل کادرهای مالی خروجی نتایج (به صورت زیر هم) */
+    /* استایل کادرهای مالی خروجی نتایج (به صورت ستونی و زیر هم) */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
@@ -61,7 +59,7 @@ st.markdown("""
         color: #212529 !important;
     }
     
-    /* کادر مبلغ پردازش شده با کما */
+    /* کادر تفکیک مبالغ پردازش شده */
     .processed-amount {
         background-color: #ebf5fb;
         border-left: 5px solid #2980b9;
@@ -75,15 +73,47 @@ st.markdown("""
         direction: LTR;
     }
     
+    /* دکمه اختصاصی پرینت بومی اندروید */
+    .print-btn {
+        display: block;
+        width: 100%;
+        background-color: #2e5b18;
+        color: white !important;
+        text-align: center;
+        padding: 14px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 10px;
+        text-decoration: none;
+        margin-top: 20px;
+        box-shadow: 0 4px 10px rgba(46, 91, 24, 0.2);
+        border: none;
+        cursor: pointer;
+    }
+
     h1, h2, h3, p, span, label {
         font-family: 'Vazirmatn', sans-serif !important;
         text-align: right !important;
     }
+
+    /* 🖨️ تنظیمات استایل مخصوص زمان پرینت (مخفی کردن بخش‌های اضافی برنامه در برگه کاغذ) */
+    @media print {
+        body, .stApp, [data-testid="stAppViewContainer"] {
+            background-color: white !important;
+            color: black !important;
+        }
+        div[data-testid="stTextInput"], .processed-amount, .print-btn, header, footer, [data-testid="stHeader"] {
+            display: none !important;
+        }
+        .result-card {
+            box-shadow: none !important;
+            border: 1px solid #ccc !important;
+            margin: 10px 0 !important;
+            page-break-inside: avoid;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
-
-FONT_PATH = "Vazirmatn-Regular.ttf"
-LOGO_PATH = "logo.png"
 
 # 2. Main Logic Function
 def calculate_all_values(b20: float) -> dict:
@@ -121,55 +151,11 @@ def calculate_all_values(b20: float) -> dict:
     c22_val = c20 + c21_val
     return {"c20": c20_val, "c21": c21_val, "c22": c22_val, "tier": tier_name}
 
-# 3. PDF Generator Helper
-def generate_pdf_report(b20, res):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    if os.path.exists(LOGO_PATH):
-        pdf.image(LOGO_PATH, x=15, y=10, w=22)
-    
-    if os.path.exists(FONT_PATH):
-        pdf.add_font("Vazir", style="", fname=FONT_PATH)
-        pdf.set_font("Vazir", size=13)
-        pdf.set_text_shaping(use_shaping_engine=True, direction="rtl")
-    else:
-        pdf.set_font("Helvetica", size=12)
-    
-    pdf.set_text_color(31, 78, 120)
-    pdf.cell(180, 12, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
-    pdf.ln(2)
-    
-    pdf.set_text_color(89, 89, 89)
-    pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتـی", ln=True, align="R")
-    pdf.cell(180, 8, txt=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
-    pdf.ln(5)
-    
-    pdf.set_draw_color(31, 78, 120)
-    pdf.line(15, pdf.get_y() + 5, 195, pdf.get_y() + 5)
-    pdf.ln(12)
-    
-    pdf.set_text_color(38, 38, 38)
-    pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
-    pdf.cell(180, 10, txt=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
-    pdf.cell(180, 10, txt=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
-    pdf.ln(5)
-    
-    pdf.set_draw_color(191, 191, 191)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-    pdf.ln(6)
-    
-    pdf.set_text_color(46, 91, 24)
-    pdf.cell(180, 12, txt=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
-    
-    return bytes(pdf.output())
-
 # 4. Streamlit UI Layout
 st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
 
-# 🌟 مقدار اولیه روی "0" تنظیم شده تا از خطای وب جلوگیری شود و به راحتی با زدن عدد جدید پاک شود
 b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value="0")
 
 b20_input = 0.0
@@ -178,27 +164,37 @@ if b20_str:
     if clean_str.isdigit():
         b20_input = float(clean_str)
 
-# اجرای محاسبات فقط در صورتی که عدد وارد شده بزرگتر از صفر باشد
 if b20_input > 0:
-    # بخش مبلغ پردازش شده خوانا با کاما
     formatted_preview = f"{int(b20_input):,}"
     st.markdown(f'<div class="processed-amount">🔹 مبلغ پردازش شده: {formatted_preview} ریال</div>', unsafe_allow_html=True)
 
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # کادرهای مالی جدید به صورت ستونی و منظم زیر هم
-    st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="result-card surcharge"><div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 30px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    # نمایش کادرهای مالی به صورت ستونی زیر هم
+    st.markdown(f"""
+        <div class="result-card">
+            <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
+            <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+        
+    st.markdown(f"""
+        <div class="result-card surcharge">
+            <div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div>
+            <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+        
+    st.markdown(f"""
+        <div class="result-card total">
+            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div>
+            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
     
-    st.write("---")
-    
-    try:
-        pdf_data = generate_pdf_report(b20_input, results)
-        st.download_button(label="📥 دریافت فایل PDF گزارش رسمی (نسخه چاپی کانون)", data=pdf_data, file_name="Expert_Report.pdf", mime="application/octet-stream", use_container_width=True)
-    except Exception as e:
-        st.error(f"خطا در تولید فایل PDF: {e}")
+    # 🌟 راه حل نهایی برای حل مشکل پرینت گوشی:
+    # این دکمه مستقیماً منوی پرینت خود سیستم‌عامل اندروید/آیفون را باز می‌کند؛ کادر زرد ورودی را مخفی کرده و نتایج را آماده چاپ یا ذخیره به عنوان PDF می‌کند.
+    st.markdown('<button class="print-btn" onclick="window.print()">🖨️ پرینت مستقیم گزارش رسمی</button>', unsafe_allow_html=True)
 else:
-    # راهنمای اولیه در صورت صفر بودن کادر
     st.write("💡 *لطفاً مبلغ مورد نظر خود را در کادر زرد رنگ فوق وارد کنید تا محاسبات بلافاصله انجام شود.*")
