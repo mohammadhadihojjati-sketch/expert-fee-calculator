@@ -220,18 +220,17 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 سیستم هوشمند دوگانه: تفکیک وب (کامپیوتر) و اپلیکیشن موبایل برای پایداری ۱۰۰ درصدی دانلودها
-    try:
-        pdf_bytes = generate_pdf_report(b20_input, results)
-        
-        # ۱. ساخت دکمه رسمی برای دسکتاپ و وب معمولی
-        st.download_button(
-            label="🖥️ دانلود گزارش PDF مخصوص کامپیوتر (وب)",
-            data=pdf_bytes,
-            file_name="expert_fee_report.pdf",
-            mime="application/pdf",
-            key="web_download_button"
-        )
-        
-        # ۲. ساخت دکمه جاوا اسکریپتی بهینه شده فشرده مخصوص دور زدن خطای ۵۰۰ در اپ موبایل
-        b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+    # 🌟 کدهای دانلود خطی کاملاً بهینه‌سازی شده بدون خطا در سیستم فاصله‌گذاری پایتون
+    pdf_bytes = generate_pdf_report(b20_input, results)
+    
+    # ۱. دکمه رسمی مخصوص کامپیوتر و وب دسکتاپ
+    st.download_button(
+        label="🖥️ دانلود گزارش PDF مخصوص کامپیوتر (وب)",
+        data=pdf_bytes,
+        file_name="expert_fee_report.pdf",
+        mime="application/pdf",
+        key="web_print_trigger_btn"
+    )
+    
+    # ۲. دکمه فشرده تک‌خطی جاوا اسکریپت مخصوص دور زدن تداخل در اپلیکیشن موبایل
+    b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
