@@ -74,12 +74,12 @@ st.markdown("""
         direction: LTR;
     }
     
-    /* 🔵 طراحی استایل دکمه چاپی کاملاً سازگار با اپلیکیشن موبایل */
-    .custom-download-btn {
+    /* 🔵 طراحی استایل دکمه چاپی مخصوص اپلیکیشن موبایل */
+    .custom-mobile-btn {
         display: inline-block;
         width: 100%;
         text-align: center;
-        background-color: #1e3a8a !important;
+        background-color: #b33939 !important;
         color: white !important;
         padding: 14px 20px;
         font-size: 18px;
@@ -87,12 +87,12 @@ st.markdown("""
         text-decoration: none !important;
         border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        cursor: pointer;
         margin-top: 15px;
         border: none;
     }
-    .custom-download-btn:hover {
-        background-color: #172554 !important;
+    .custom-mobile-btn:hover {
+        background-color: #8c2626 !important;
+        color: white !important;
     }
     
     h1, h2, h3, p, span, label {
@@ -220,17 +220,24 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 کدهای دانلود خطی کاملاً بهینه‌سازی شده بدون خطا در سیستم فاصله‌گذاری پایتون
+    # تولید داده‌های پی‌دی‌اف
     pdf_bytes = generate_pdf_report(b20_input, results)
     
-    # ۱. دکمه رسمی مخصوص کامپیوتر و وب دسکتاپ
+    # ۱. دکمه رسمی مخصوص کامپیوتر و وب دسکتاپ (بدون تغییر)
     st.download_button(
         label="🖥️ دانلود گزارش PDF مخصوص کامپیوتر (وب)",
         data=pdf_bytes,
         file_name="expert_fee_report.pdf",
         mime="application/pdf",
-        key="web_print_trigger_btn"
+        key="web_fixed_btn"
     )
     
-    # ۲. دکمه فشرده تک‌خطی جاوا اسکریپت مخصوص دور زدن تداخل در اپلیکیشن موبایل
+    # ۲. 🌟 راهکار نهایی برای اپ موبایل: باز کردن مستقیم PDF در زبانه جدید و مستقل مرورگر گوشی
     b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+    
+    st.write("---")
+    st.markdown("<p style='font-size:12px; color:#6c757d; text-align:center;'>👇 اگر در گوشی یا اپلیکیشن موبایل هستید از دکمه زیر استفاده کنید 👇</p>", unsafe_allow_html=True)
+    
+    # ایجاد یک لینک مستقیم با ویژگی target="_blank" که اندروید اجازه باز کردن آن را صادر می‌کند
+    mobile_html_link = f'<a href="data:application/pdf;base64,{b64_pdf}" target="_blank" class="custom-mobile-btn">📱 مشاهده و پرینت PDF در گوشی (موبایل)</a>'
+    st.markdown(mobile_html_link, unsafe_allow_html=True)
