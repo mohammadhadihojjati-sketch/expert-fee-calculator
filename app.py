@@ -220,24 +220,24 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 نسخه اصلاح شده جاوا اسکریپت (بدون خطای تداخل کروشه پایتون)
+    # 🌟 استفاده از ساختار رشته معمولی بدون f-string برای جلوگیری کامل از خطاهای ساختاری پایتون
     try:
         pdf_bytes = generate_pdf_report(b20_input, results)
         b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
         
-        # اصلاح کروشه‌ها با دو جفت کپی {{ }} جهت جلوگیری از کرش پایتون
-        js_download_script = f"""
+        # قالب خام کدهای جاوااسکریپت بدون فرمت f پایتون
+        raw_js_template = """
             <button onclick="downloadPDF()" class="custom-download-btn">🔵 دانلود رسمی گزارش PDF</button>
             <script>
-            function downloadPDF() {{
-                var base64Str = "{b64_pdf}";
+            function downloadPDF() {
+                var base64Str = "PLACEHOLDER_BASE64_DATA";
                 var binaryStr = atob(base64Str);
                 var len = binaryStr.length;
                 var bytes = new Uint8Array(len);
-                for (var i = 0; i < len; i++) {{
+                for (var i = 0; i < len; i++) {
                     bytes[i] = binaryStr.charCodeAt(i);
-                }}
-                var blob = new Blob([bytes], {{type: "application/pdf"}});
+                }
+                var blob = new Blob([bytes], {type: "application/pdf"});
                 var link = document.createElement('a');
                 link.href = window.URL.createObjectURL(blob);
                 link.download = "expert_fee_report.pdf";
