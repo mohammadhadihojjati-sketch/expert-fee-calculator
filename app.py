@@ -1,4 +1,4 @@
-pythonimport streamlit as st
+import streamlit as st
 import io
 import os
 import base64
@@ -169,8 +169,8 @@ st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
 
-# 🌟 مقدار پیش‌فرض کادر ورودی روی متن خالی "" تنظیم شد تا کاربر نیاز به پاک کردن عدد قبلی نداشته باشد.
-b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value="")
+# 🌟 مقدار اولیه روی "0" تنظیم شده تا از خطای وب جلوگیری شود و به راحتی با زدن عدد جدید پاک شود
+b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value="0")
 
 b20_input = 0.0
 if b20_str:
@@ -178,7 +178,7 @@ if b20_str:
     if clean_str.isdigit():
         b20_input = float(clean_str)
 
-# 🌟 نمایش خروجی‌ها و محاسبات تنها در صورتی که کاربر عددی وارد کرده باشد
+# اجرای محاسبات فقط در صورتی که عدد وارد شده بزرگتر از صفر باشد
 if b20_input > 0:
     # بخش مبلغ پردازش شده خوانا با کاما
     formatted_preview = f"{int(b20_input):,}"
@@ -196,17 +196,9 @@ if b20_input > 0:
     
     try:
         pdf_data = generate_pdf_report(b20_input, results)
-        
-        st.download_button(
-            label="📥 دریافت فایل PDF گزارش رسمی (نسخه چاپی کانون)", 
-            data=pdf_data, 
-            file_name="Expert_Report.pdf", 
-            mime="application/octet-stream", 
-            use_container_width=True
-        )
-        
+        st.download_button(label="📥 دریافت فایل PDF گزارش رسمی (نسخه چاپی کانون)", data=pdf_data, file_name="Expert_Report.pdf", mime="application/octet-stream", use_container_width=True)
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
 else:
-    # پیام راهنما در صورتی که کادر خالی باشد
-    st.write("💡 *لطفاً مبلغ مبنای مورد نظر خود را در کادر زرد رنگ فوق وارد کنید تا محاسبات به صورت خودکار انجام شود
+    # راهنمای اولیه در صورت صفر بودن کادر
+    st.write("💡 *لطفاً مبلغ مورد نظر خود را در کادر زرد رنگ فوق وارد کنید تا محاسبات بلافاصله انجام شود.*")
