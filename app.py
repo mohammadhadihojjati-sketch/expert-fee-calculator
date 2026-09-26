@@ -74,8 +74,8 @@ st.markdown("""
         direction: LTR;
     }
     
-    /* 🔵 طراحی استایل دکمه پرینت مخصوص اپلیکیشن موبایل */
-    .custom-print-btn {
+    /* 🔵 طراحی استایل دکمه چاپی مخصوص اپلیکیشن موبایل */
+    .custom-download-btn {
         display: inline-block;
         width: 100%;
         text-align: center;
@@ -91,7 +91,7 @@ st.markdown("""
         margin-top: 15px;
         border: none;
     }
-    .custom-print-btn:hover {
+    .custom-download-btn:hover {
         background-color: #172554 !important;
     }
     
@@ -124,7 +124,7 @@ def calculate_all_values(b20: float) -> dict:
                 {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله ۲ (۵۰۰ میلیون تا ۱ میلیارد ریال)"},
                 {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله ۳ (۱ تا ۵ میلیارد ریال)"},
                 {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله ۴ (۵ تا سی میلیارد ریال)"},
-                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵۰ میلیارد ریال)"},
+                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵ۆ میلیارد ریال)"},
                 {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله ۶ (۱۵۰ تا ۵۰۰ میلیارد ریال)"},
                 {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله ۷ (۵۰۰ میلیارد تا ۱ تریلیون ریال)"},
                 {"upper": 2_000_000_000_000,   "rate": 0.00023,    "base": 702_250_000,   "lower": 1_000_000_000_000, "name": "پله ۸ (۱ تا ۲ تریلیون ریال)"},
@@ -220,21 +220,19 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # تولید داده‌های باینری فایل PDF کارشناسی
+    # قالب‌بندی و انتقال استریم باینری برای وب و اپلیکیشن
     pdf_bytes = generate_pdf_report(b20_input, results)
     
-    # ۱. دکمه رسمی مخصوص کامپیوتر و وب دسکتاپ
+    # ۱. دکمه بومی پایتون مخصوص کامپیوتر و مرورگر وب دسکتاپ
     st.download_button(
         label="🖥️ دانلود گزارش PDF مخصوص کامپیوتر (وب)",
         data=pdf_bytes,
         file_name="expert_fee_report.pdf",
         mime="application/pdf",
-        key="desktop_web_final_trigger_v2"
+        key="desktop_web_final_trigger"
     )
     
-    # ۲. 🌟 راهکار نهایی و قطعی برای پرینت موبایل: استفاده از متد باز کردن مستقیم دیتااستریم در تب جدید مرورگر گوشی
+    # ۲. 🌟 راهکار قطعی اپلیکیشن موبایل: باز کردن امن به وسیله سیستم شبیه‌ساز Blob بدون مسدودی جاوا اسکریپت
     b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
     
-    # با این اسکریپت فشرده تک‌خطی، محتوای سند مستقیماً در یک داک لود شده و فرمان Print بومی مرورگر صادر می‌شود
-    js_print_engine = '<button onclick="printPWA()" class="custom-print-btn">📱 چاپ و پرینت مستقیم گزارش در گوشی</button><script>function printPWA(){var b64="KEY_DATA";var win=window.open();win.document.write(\'<iframe src="data:application/pdf;base64,\'+b64+\'" style="width:100%; height:100%; border:none;"></iframe>\');setTimeout(function(){win.focus();win.print();},1000);}</script>'
-    
+    # ساخت دکمه اختصاصی موبایل با انتقال داده از طریق کلیک امن پنجره مجازی (Window Node)
