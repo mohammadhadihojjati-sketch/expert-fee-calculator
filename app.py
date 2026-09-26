@@ -6,7 +6,7 @@ from fpdf import FPDF
 # 1. Page Config
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS ---
+# --- تزریق کدهای CSS پایداری محیط مالی و راست‌چین ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -85,7 +85,7 @@ def calculate_all_values(b20: float) -> dict:
                     break
     return {"c20": c20, "c21": c20 * 0.50, "c22": c20 + (c20 * 0.50), "tier": tier_name}
 
-# 3. PDF Generator Helper (اصلاح شده برای جلوگیری از ارور ۵۰۰)
+# 3. PDF Generator Helper (رفع خطای ساختاری آرگومان و استریم امن)
 def generate_pdf_report(b20, res):
     pdf = FPDF()
     pdf.add_page()
@@ -96,17 +96,18 @@ def generate_pdf_report(b20, res):
     if os.path.exists(FONT_PATH):
         pdf.add_font("Vazir", style="", fname=FONT_PATH)
         pdf.set_font("Vazir", size=13)
+        # اجرای موتور متون راست‌چین نیازمند بسته uharfbuzz در سرور است
         pdf.set_text_shaping(use_shaping_engine=True, direction="rtl")
     else:
         pdf.set_font("Helvetica", size=12)
     
     pdf.set_text_color(31, 78, 120)
-    pdf.cell(180, 12, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
+    pdf.cell(180, 12, text="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
     pdf.ln(2)
     
     pdf.set_text_color(89, 89, 89)
-    pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتـی", ln=True, align="R")
-    pdf.cell(180, 8, txt=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
+    pdf.cell(180, 8, text="تنظیم کننده: محمد هادی حجتـی", ln=True, align="R")
+    pdf.cell(180, 8, text=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
     pdf.ln(5)
     
     pdf.set_draw_color(31, 78, 120)
@@ -114,9 +115,9 @@ def generate_pdf_report(b20, res):
     pdf.ln(12)
     
     pdf.set_text_color(38, 38, 38)
-    pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
-    pdf.cell(180, 10, txt=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
-    pdf.cell(180, 10, txt=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, text=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, text=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, text=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
     pdf.ln(5)
     
     pdf.set_draw_color(191, 191, 191)
@@ -124,9 +125,8 @@ def generate_pdf_report(b20, res):
     pdf.ln(6)
     
     pdf.set_text_color(46, 91, 24)
-    pdf.cell(180, 12, txt=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 12, text=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
     
-    # خروجی امن به صورت استریم بایت برای جلوگیری از ارور سرور
     return pdf.output()
 
 # 4. Streamlit UI Layout
@@ -164,7 +164,7 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 دکمه دانلود آبی رنگ کاملاً اصلاح شده و بدون باگ سرور
+    # کنترل خطا و دکمه رسمی دانلود استریم شده
     try:
         pdf_bytes = generate_pdf_report(b20_input, results)
         st.download_button(
@@ -174,4 +174,5 @@ if b20_input > 0:
             mime="application/pdf"
         )
     except Exception as e:
-        st.error("خطا در تولید فایل PDF. لطفاً از صحت وجود فایل فونت Vazirmatn-Regular.ttf روی سرور مطمئن شوید.")
+        st.error(f"خطای سیستم در کامپایل گزارش: {str(e)}")
+        st.info("💡 راهنما: لطفاً مطمئن شوید پکیج uharfbuzz در فایل requirements.txt پروژه شما تعریف شده است.")
