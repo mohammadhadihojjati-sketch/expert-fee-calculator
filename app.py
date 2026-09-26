@@ -1,12 +1,13 @@
 import streamlit as st
 import io
 import os
+import base64
 from fpdf import FPDF
 
 # 1. Page Config (تنظیمات رسمی صفحه)
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS برای استایل‌دهی و راست‌چین کردن کامل اپلیکیشن ---
+# --- تزریق کدهای CSS برای استایل‌دهی و راست‌چین کردن کامل اپلیکیشن و دکمه دانلود سفارشی موبایل ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -71,6 +72,26 @@ st.markdown("""
         margin-bottom: 15px;
         text-align: center;
         direction: LTR;
+    }
+    
+    /* 🔵 طراحی استایل دکمه دانلود کاملاً سازگار با موبایل */
+    .custom-download-btn {
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        background-color: #1e3a8a !important;
+        color: white !important;
+        padding: 12px 20px;
+        font-size: 18px;
+        font-weight: bold;
+        text-decoration: none !important;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+    }
+    .custom-download-btn:hover {
+        background-color: #172554 !important;
     }
     
     h1, h2, h3, p, span, label {
@@ -165,7 +186,7 @@ def generate_pdf_report(b20, res):
     
     return pdf.output()
 
-# 4. Streamlit UI Layout (رابط کاربری و دکمه دانلود نهایی)
+# 4. Streamlit UI Layout
 st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
@@ -185,7 +206,6 @@ if b20_input > 0:
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # کادرهای مالی یکپارچه با ساختار تگ‌های HTML بسته شده و کاملاً استاندارد
     st.markdown(f"""
         <div class="result-card">
             <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
@@ -201,17 +221,21 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # پردازش امن داده‌های باینری و رفع خطای کلاس bytearray
+    # 🌟 متد نوین و بدون باگ دانلود با فرمت HTML Base64 به جای st.download_button
     try:
         pdf_data = generate_pdf_report(b20_input, results)
-        pdf_bytes = bytes(pdf_data)  # تبدیل قطعی قالب داده برای Streamlit
+        pdf_bytes = bytes(pdf_data)
         
-        st.download_button(
-            label="🔵 دانلود رسمی گزارش PDF",
-            data=pdf_bytes,
-            file_name="expert_fee_report.pdf",
-            mime="application/pdf"
-        )
+        # انکود کردن فایل به بیس ۶۴ جهت ایجاد لینک دانلود مستقیم مرورگر موبایل
+        b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        download_html = f'''
+            <a href="data:application/pdf;base64,{b64_pdf}" 
+               download="expert_fee_report.pdf" 
+               class="custom-download-btn">
+               🔵 دانلود رسمی گزارش PDF
+            </a>
+        '''
+        st.markdown(download_html, unsafe_allow_html=True)
+        
     except Exception as e:
         st.error(f"خطای سیستم در کامپایل گزارش: {str(e)}")
-        st.info("💡 راهنما: لطفاً مطمئن شوید پکیج uharfbuzz در فایل requirements.txt پروژه شما تعریف شده است.")
