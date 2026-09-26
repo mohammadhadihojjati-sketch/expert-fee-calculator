@@ -220,12 +220,12 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 شاه‌کلید حل مشکل اپلیکیشن موبایل: استفاده از متد دانلود Blob مبتنی بر جاوا اسکریپت
+    # 🌟 نسخه اصلاح شده جاوا اسکریپت (بدون خطای تداخل کروشه پایتون)
     try:
         pdf_bytes = generate_pdf_report(b20_input, results)
         b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
         
-        # اسکریپت پیشرفته جاوا اسکریپت برای تبدیل فایل به آبجکت بومی اندروید جهت بارگیری مستقیم
+        # اصلاح کروشه‌ها با دو جفت کپی {{ }} جهت جلوگیری از کرش پایتون
         js_download_script = f"""
             <button onclick="downloadPDF()" class="custom-download-btn">🔵 دانلود رسمی گزارش PDF</button>
             <script>
@@ -240,3 +240,4 @@ if b20_input > 0:
                 var blob = new Blob([bytes], {{type: "application/pdf"}});
                 var link = document.createElement('a');
                 link.href = window.URL.createObjectURL(blob);
+                link.download = "expert_fee_report.pdf";
