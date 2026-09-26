@@ -1,13 +1,13 @@
-import streamlit as st
+pythonimport streamlit as st
 import io
 import os
 import base64
 from fpdf import FPDF
 
-# 1. Page Config
+# 1. Page Config (تعریف مشخصات تب)
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS برای استایل زرد و راست‌چین کردن کل اپلیکیشن ---
+# --- تزریق کدهای CSS پیشرفته برای موبایل و زرد کردن کادر ورودی ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -20,7 +20,7 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* زرد کردن کادر ورودی پایتون */
+    /* زرد کردن قطعی کادر ورودی عدد */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -33,7 +33,7 @@ st.markdown("""
         padding: 14px !important;
     }
     
-    /* استایل کادرهای مالی خروجی نتایج (زیر هم) */
+    /* استایل کادرهای مالی خروجی نتایج (به صورت زیر هم) */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
@@ -61,7 +61,7 @@ st.markdown("""
         color: #212529 !important;
     }
     
-    /* نمایش بزرگ مبالغ پردازش شده بالای کادر */
+    /* کادر مبلغ پردازش شده با کما */
     .processed-amount {
         background-color: #ebf5fb;
         border-left: 5px solid #2980b9;
@@ -169,8 +169,8 @@ st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
 
-initial_val = "1000000000"
-b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value=initial_val)
+# 🌟 مقدار پیش‌فرض کادر ورودی روی متن خالی "" تنظیم شد تا کاربر نیاز به پاک کردن عدد قبلی نداشته باشد.
+b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value="")
 
 b20_input = 0.0
 if b20_str:
@@ -178,29 +178,35 @@ if b20_str:
     if clean_str.isdigit():
         b20_input = float(clean_str)
 
+# 🌟 نمایش خروجی‌ها و محاسبات تنها در صورتی که کاربر عددی وارد کرده باشد
 if b20_input > 0:
+    # بخش مبلغ پردازش شده خوانا با کاما
     formatted_preview = f"{int(b20_input):,}"
     st.markdown(f'<div class="processed-amount">🔹 مبلغ پردازش شده: {formatted_preview} ریال</div>', unsafe_allow_html=True)
 
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # نمایش ستونی نتایج زیر هم
+    # کادرهای مالی جدید به صورت ستونی و منظم زیر هم
     st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="result-card surcharge"><div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 30px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     
     st.write("---")
-    st.subheader("📋 پیش‌نمایش و نسخه چاپی گزارش رسمی")
     
     try:
         pdf_data = generate_pdf_report(b20_input, results)
         
-        # 🌟 ترفند اصلی: نمایش مستقیم و زنده PDF در برگه بدون نیاز به دانلود دکمه‌ای
-        base64_pdf = base64.b64encode(pdf_data).decode('utf-8')
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500" style="border:1px solid #dfe4ea; border-radius:8px;"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
-        st.caption("☝️ گزارش بالا به صورت زنده تولید شده است. برای پرینت یا ذخیره، از دکمه‌های منوی داخل کادر بالا یا آیکون اشتراک‌گذاری گوشی استفاده کنید.")
+        st.download_button(
+            label="📥 دریافت فایل PDF گزارش رسمی (نسخه چاپی کانون)", 
+            data=pdf_data, 
+            file_name="Expert_Report.pdf", 
+            mime="application/octet-stream", 
+            use_container_width=True
+        )
         
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
+else:
+    # پیام راهنما در صورتی که کادر خالی باشد
+    st.write("💡 *لطفاً مبلغ مبنای مورد نظر خود را در کادر زرد رنگ فوق وارد کنید تا محاسبات به صورت خودکار انجام شود
