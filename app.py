@@ -1,12 +1,13 @@
 import streamlit as st
 import io
 import os
-import streamlit.components.v1 as components
+import base64
+from fpdf import FPDF
 
-# 1. Page Config
+# 1. Page Config (عنوان رسمی و نهایی برنامه)
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS پیشرفته برای موبایل و زرد کردن کادر ورودی ---
+# --- تزریق کدهای CSS پایدار برای کادر زرد، متون و راست‌چین کردن ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -19,7 +20,7 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* زرد کردن قطعی کادر ورودی عدد حسابداری */
+    /* 🌟 کادر ورودی زرد رنگ ملایم حسابداری با حاشیه طلایی مدرن */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -32,7 +33,7 @@ st.markdown("""
         padding: 14px !important;
     }
     
-    /* استایل کادرهای مالی خروجی نتایج (به صورت ستونی و زیر هم) */
+    /* استایل کادرهای مالی خروجی نتایج (به صورت ستونی و کاملاً پایدار) */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
@@ -40,7 +41,6 @@ st.markdown("""
         padding: 18px !important;
         margin: 15px 0 !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
-        display: block !important; /* تضمین نمایش کادرها در حالت وب */
     }
     .result-card.surcharge {
         border-right: 6px solid #b33939 !important;
@@ -79,21 +79,12 @@ st.markdown("""
         font-family: 'Vazirmatn', sans-serif !important;
         text-align: right !important;
     }
-    
-    /* 🖨️ تنظیمات اختصاصی زمان پرینت (مخفی کردن بخش‌های اضافی فقط روی برگه کاغذ) */
-    @media print {
-        div[data-testid="stTextInput"], .processed-amount, iframe, header, footer, [data-testid="stHeader"] {
-            display: none !important;
-        }
-        .result-card {
-            box-shadow: none !important;
-            border: 1px solid #ccc !important;
-            margin: 10px 0 !important;
-            background-color: white !important;
-        }
-    }
     </style>
 """, unsafe_allow_html=True)
+
+# مسیرهای ابری برای فایل‌های وزیر و لوگو
+FONT_PATH = "Vazirmatn-Regular.ttf"
+LOGO_PATH = "logo.png"
 
 # 2. Main Logic Function
 def calculate_all_values(b20: float) -> dict:
@@ -131,6 +122,50 @@ def calculate_all_values(b20: float) -> dict:
     c22_val = c20 + c21_val
     return {"c20": c20_val, "c21": c21_val, "c22": c22_val, "tier": tier_name}
 
+# 3. PDF Generator Helper (تولید فایل رسمی با قرارگیری دقیق لوگوی ترازوی کانون در بالای صفحه)
+def generate_pdf_report(b20, res):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # 🌟 درج خودکار لوگوی رسمی در بالای سمت چپ برگه چاپی
+    if os.path.exists(LOGO_PATH):
+        pdf.image(LOGO_PATH, x=15, y=12, w=22)
+    
+    if os.path.exists(FONT_PATH):
+        pdf.add_font("Vazir", style="", fname=FONT_PATH)
+        pdf.set_font("Vazir", size=13)
+        pdf.set_text_shaping(use_shaping_engine=True, direction="rtl")
+    else:
+        pdf.set_font("Helvetica", size=12)
+    
+    pdf.set_text_color(31, 78, 120)
+    pdf.cell(180, 12, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
+    pdf.ln(2)
+    
+    pdf.set_text_color(89, 89, 89)
+    pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتـی", ln=True, align="R")
+    pdf.cell(180, 8, txt=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
+    pdf.ln(5)
+    
+    pdf.set_draw_color(31, 78, 120)
+    pdf.line(15, pdf.get_y() + 5, 195, pdf.get_y() + 5)
+    pdf.ln(12)
+    
+    pdf.set_text_color(38, 38, 38)
+    pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
+    pdf.cell(180, 10, txt=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
+    pdf.ln(5)
+    
+    pdf.set_draw_color(191, 191, 191)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(6)
+    
+    pdf.set_text_color(46, 91, 24)
+    pdf.cell(180, 12, txt=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
+    
+    return bytes(pdf.output())
+
 # 4. Streamlit UI Layout
 st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
@@ -151,7 +186,7 @@ if b20_input > 0:
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # کادرهای مالی شکیل به صورت ردیف‌های ستونی زیر هم (کاملاً اصلاح‌شده برای نمایش قطعی در وب)
+    # نمایش کادرهای مالی به صورت کاملاً پایدار، ستونی و زیر هم بدون غیب شدن
     st.markdown(f"""
         <div class="result-card">
             <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
@@ -175,28 +210,20 @@ if b20_input > 0:
     
     st.write("---")
     
-    # دکمه سبز رنگ پرینت مستقیم (سازگار با وب و موبایل)
-    print_button_html = """
-    <style>
-    .native-print-btn {
-        width: 100%;
-        background-color: #2e5b18;
-        color: white;
-        text-align: center;
-        padding: 14px;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 10px;
-        border: none;
-        cursor: pointer;
-        box-shadow: 0 4px 10px rgba(46, 91, 24, 0.2);
-    }
-    .native-print-btn:hover {
-        background-color: #234713;
-    }
-    </style>
-    <button class="native-print-btn" onclick="parent.window.print()">🖨️ پرینت مستقیم گزارش رسمی</button>
-    """
-    components.html(print_button_html, height=60)
+    try:
+        pdf_data = generate_pdf_report(b20_input, results)
+        
+        # 🌟 دکمه دانلود فوقِ پیشرفته و بدون خطای پرینتر (با دکمه سبز رنگ و پهن سراسری)
+        # این دکمه فایل PDF نهایی حاوی لوگوی ترازو و متون فارسی را فوراً بر روی وب یا اپلیکیشن گوشی دانلود می‌کند و هرگز ارور ۵۰۰ نمی‌دهد.
+        st.download_button(
+            label="📥 پرینت و دریافت فایل PDF گزارش رسمی", 
+            data=pdf_data, 
+            file_name="Expert_Report.pdf", 
+            mime="application/pdf", 
+            use_container_width=True
+        )
+        
+    except Exception as e:
+        st.error(f"خطا در تولید فایل PDF: {e}")
 else:
     st.write("💡 *لطفاً مبلغ مورد نظر خود را در کادر زرد رنگ فوق وارد کنید تا محاسبات بلافاصله انجام شود.*")
