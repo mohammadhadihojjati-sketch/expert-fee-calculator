@@ -1,11 +1,12 @@
 import streamlit as st
 import io
 import os
+import streamlit.components.v1 as components # 🌟 اضافه شدن ابزار بومی اجرای جاوااسکریپت
 
 # 1. Page Config
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS پیشرفته برای موبایل، کادر زرد و آماده‌سازی پرینت ---
+# --- تزریق کدهای CSS پیشرفته برای موبایل و زرد کردن کادر ورودی ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -18,7 +19,7 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* زرد کردن قطعی کادر ورودی عدد حسابداری */
+    /* زرد کردن قطعی کادر ورودی عدد */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -31,7 +32,7 @@ st.markdown("""
         padding: 14px !important;
     }
     
-    /* استایل کادرهای مالی خروجی نتایج (به صورت ستونی و زیر هم) */
+    /* استایل کادرهای مالی خروجی نتایج (به صورت زیر هم) */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
@@ -59,7 +60,7 @@ st.markdown("""
         color: #212529 !important;
     }
     
-    /* کادر تفکیک مبالغ پردازش شده */
+    /* کادر مبلغ پردازش شده با کما */
     .processed-amount {
         background-color: #ebf5fb;
         border-left: 5px solid #2980b9;
@@ -73,43 +74,20 @@ st.markdown("""
         direction: LTR;
     }
     
-    /* دکمه اختصاصی پرینت بومی اندروید */
-    .print-btn {
-        display: block;
-        width: 100%;
-        background-color: #2e5b18;
-        color: white !important;
-        text-align: center;
-        padding: 14px;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 10px;
-        text-decoration: none;
-        margin-top: 20px;
-        box-shadow: 0 4px 10px rgba(46, 91, 24, 0.2);
-        border: none;
-        cursor: pointer;
-    }
-
     h1, h2, h3, p, span, label {
         font-family: 'Vazirmatn', sans-serif !important;
         text-align: right !important;
     }
-
-    /* 🖨️ تنظیمات استایل مخصوص زمان پرینت (مخفی کردن بخش‌های اضافی برنامه در برگه کاغذ) */
+    
+    /* 🖨️ استایل چاپی: مخفی کردن کادرهای اضافی سیستم در زمان چاپ روی کاغذ */
     @media print {
-        body, .stApp, [data-testid="stAppViewContainer"] {
-            background-color: white !important;
-            color: black !important;
-        }
-        div[data-testid="stTextInput"], .processed-amount, .print-btn, header, footer, [data-testid="stHeader"] {
+        div[data-testid="stTextInput"], .processed-amount, iframe, header, footer, [data-testid="stHeader"], .stSidebar {
             display: none !important;
         }
         .result-card {
             box-shadow: none !important;
             border: 1px solid #ccc !important;
             margin: 10px 0 !important;
-            page-break-inside: avoid;
         }
     }
     </style>
@@ -171,30 +149,36 @@ if b20_input > 0:
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # نمایش کادرهای مالی به صورت ستونی زیر هم
-    st.markdown(f"""
-        <div class="result-card">
-            <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
-            <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
-        
-    st.markdown(f"""
-        <div class="result-card surcharge">
-            <div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div>
-            <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
-        
-    st.markdown(f"""
-        <div class="result-card total">
-            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div>
-            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+    # کادرهای مالی جدید به صورت ستونی و منظم زیر هم
+    st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="result-card surcharge"><div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 30px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     
-    # 🌟 راه حل نهایی برای حل مشکل پرینت گوشی:
-    # این دکمه مستقیماً منوی پرینت خود سیستم‌عامل اندروید/آیفون را باز می‌کند؛ کادر زرد ورودی را مخفی کرده و نتایج را آماده چاپ یا ذخیره به عنوان PDF می‌کند.
-    st.markdown('<button class="print-btn" onclick="window.print()">🖨️ پرینت مستقیم گزارش رسمی</button>', unsafe_allow_html=True)
+    st.write("---")
+    
+    # 🌟 راه حل قطعی و نهایی پرینت وب و گوشی: ارجاع دستور چاپ به والد اصلی مرورگر (parent.window.print)
+    # این کد دکمه بزرگ سبز رنگ را با بالاترین استایل مالی تزریق کرده و در لحظه کلیک، مستقیماً پنجره چاپ ویندوز یا موبایل را صدا می‌زند.
+    print_button_html = """
+    <style>
+    .native-print-btn {
+        width: 100%;
+        background-color: #2e5b18;
+        color: white;
+        text-align: center;
+        padding: 14px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(46, 91, 24, 0.2);
+    }
+    .native-print-btn:hover {
+        background-color: #234713;
+    }
+    </style>
+    <button class="native-print-btn" onclick="parent.window.print()">🖨️ پرینت مستقیم گزارش رسمی</button>
+    """
+    components.html(print_button_html, height=60)
 else:
     st.write("💡 *لطفاً مبلغ مورد نظر خود را در کادر زرد رنگ فوق وارد کنید تا محاسبات بلافاصله انجام شود.*")
