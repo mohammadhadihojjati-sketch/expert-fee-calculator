@@ -3,19 +3,22 @@ import io
 import os
 from fpdf import FPDF
 
-# 1. Page Config
+# 1. Page Config (تنظیمات رسمی صفحه)
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS پایداری محیط مالی و راست‌چین ---
+# --- تزریق کدهای CSS برای استایل‌دهی و راست‌چین کردن کامل اپلیکیشن ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
+    
     html, body, [data-testid="stAppViewContainer"], .stApp {
         font-family: 'Vazirmatn', sans-serif !important;
         direction: RTL !important;
         text-align: right !important;
         background-color: #f8f9fa !important;
     }
+    
+    /* 🌟 کادر ورودی زرد رنگ ملایم حسابداری با حاشیه طلایی مدرن */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -27,6 +30,8 @@ st.markdown("""
         color: #2c3e50 !important;
         padding: 14px !important;
     }
+    
+    /* استایل کادرهای مالی خروجی نتایج */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
@@ -35,29 +40,55 @@ st.markdown("""
         margin: 15px 0 !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
     }
-    .result-card.surcharge { border-right: 6px solid #b33939 !important; }
+    .result-card.surcharge {
+        border-right: 6px solid #b33939 !important;
+    }
     .result-card.total {
         border-right: 6px solid #2e5b18 !important;
         background-color: #f4faf0 !important;
     }
-    .card-title { font-size: 14px !important; color: #6c757d !important; margin-bottom: 6px !important; font-weight: bold !important; }
-    .card-value { font-size: 24px !important; font-weight: bold !important; color: #212529 !important; }
-    .processed-amount {
-        background-color: #ebf5fb; border-left: 5px solid #2980b9; padding: 12px;
-        border-radius: 8px; font-size: 18px; font-weight: bold; color: #1b4f72;
-        margin-bottom: 15px; text-align: center; direction: LTR;
+    .card-title {
+        font-size: 14px !important;
+        color: #6c757d !important;
+        margin-bottom: 6px !important;
+        font-weight: bold !important;
     }
-    h1, h2, h3, p, span, label { font-family: 'Vazirmatn', sans-serif !important; text-align: right !important; }
+    .card-value {
+        font-size: 24px !important;
+        font-weight: bold !important;
+        color: #212529 !important;
+    }
+    
+    /* کادر تفکیک مبالغ پردازش شده */
+    .processed-amount {
+        background-color: #ebf5fb;
+        border-left: 5px solid #2980b9;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #1b4f72;
+        margin-bottom: 15px;
+        text-align: center;
+        direction: LTR;
+    }
+    
+    h1, h2, h3, p, span, label {
+        font-family: 'Vazirmatn', sans-serif !important;
+        text-align: right !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
+# مسیرهای ابری برای فایل‌های وزیر و لوگو
 FONT_PATH = "Vazirmatn-Regular.ttf"
 LOGO_PATH = "logo.png"
 
-# 2. Main Logic Function
+# 2. Main Logic Function (منطق محاسباتی پله‌ها)
 def calculate_all_values(b20: float) -> dict:
     c20 = 0
     tier_name = "خارج از محدوده محاسبات"
+    
     if 0 < b20 <= 50_000_000_000_000:
         if b20 >= 50_000_000_000_000:
             c20 = 0
@@ -67,36 +98,41 @@ def calculate_all_values(b20: float) -> dict:
             tier_name = "سقف ثابت بازه آخر"
         else:
             brackets = [
-                {"upper": 500_000_000, "rate": 0, "base": 20_000_000, "lower": 0, "name": "پله ۱ (زیر ۵۰۰ میلیون ریال)"},
-                {"upper": 1_000_000_000, "rate": 0.0045, "base": 20_000_000, "lower": 500_000_000, "name": "پله ۲ (۵۰۰ میلیون تا ۱ میلیارد ریال)"},
-                {"upper": 5_000_000_000, "rate": 0.0040, "base": 22_250_000, "lower": 1_000_000_000, "name": "پله ۳ (۱ تا ۵ میلیارد ریال)"},
-                {"upper": 30_000_000_000, "rate": 0.0020, "base": 38_250_000, "lower": 5_000_000_000, "name": "پله ۴ (۵ تا سی میلیارد ریال)"},
-                {"upper": 150_000_000_000, "rate": 0.0012, "base": 88_250_000, "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵۰ میلیارد ریال)"},
-                {"upper": 500_000_000_000, "rate": 0.0009, "base": 232_250_000, "lower": 150_000_000_000, "name": "پله ۶ (۱۵۰ تا ۵۰۰ میلیارد ریال)"},
-                {"upper": 1_000_000_000_000, "rate": 0.00031, "base": 547_250_000, "lower": 500_000_000_000, "name": "پله ۷ (۵۰۰ میلیارد تا ۱ تریلیون ریال)"},
-                {"upper": 2_000_000_000_000, "rate": 0.00023, "base": 702_250_000, "lower": 1_000_000_000_000, "name": "پله ۸ (۱ تا ۲ تریلیون ریال)"},
-                {"upper": 4_000_000_000_000, "rate": 0.000185, "base": 932_250_000, "lower": 2_000_000_000_000, "name": "پله ۹ (۲ تا ۴ تریلیون ریال)"},
-                {"upper": 4_318_333_330_000, "rate": 0.00015, "base": 1_302_250_000, "lower": 4_000_000_000_000, "name": "پله ۱۰ (۴ تا ۴.۳۱ تریلیون ریال)"},
+                {"upper": 500_000_000,         "rate": 0,          "base": 20_000_000,    "lower": 0, "name": "پله ۱ (زیر ۵۰۰ میلیون ریال)"},
+                {"upper": 1_000_000_000,       "rate": 0.0045,     "base": 20_000_000,    "lower": 500_000_000, "name": "پله ۲ (۵۰۰ میلیون تا ۱ میلیارد ریال)"},
+                {"upper": 5_000_000_000,       "rate": 0.0040,     "base": 22_250_000,    "lower": 1_000_000_000, "name": "پله ۳ (۱ تا ۵ میلیارد ریال)"},
+                {"upper": 30_000_000_000,      "rate": 0.0020,     "base": 38_250_000,    "lower": 5_000_000_000, "name": "پله ۴ (۵ تا سی میلیارد ریال)"},
+                {"upper": 150_000_000_000,     "rate": 0.0012,     "base": 88_250_000,    "lower": 30_000_000_000, "name": "پله ۵ (۳۰ تا ۱۵۰ میلیارد ریال)"},
+                {"upper": 500_000_000_000,     "rate": 0.0009,     "base": 232_250_000,   "lower": 150_000_000_000, "name": "پله ۶ (۱۵۰ تا ۵۰۰ میلیارد ریال)"},
+                {"upper": 1_000_000_000_000,   "rate": 0.00031,    "base": 547_250_000,   "lower": 500_000_000_000, "name": "پله ۷ (۵۰۰ میلیارد تا ۱ تریلیون ریال)"},
+                {"upper": 2_000_000_000_000,   "rate": 0.00023,    "base": 702_250_000,   "lower": 1_000_000_000_000, "name": "پله ۸ (۱ تا ۲ تریلیون ریال)"},
+                {"upper": 4_000_000_000_000,   "rate": 0.000185,   "base": 932_250_000,   "lower": 2_000_000_000_000, "name": "پله ۹ (۲ تا ۴ تریلیون ریال)"},
+                {"upper": 4_318_333_330_000,   "rate": 0.00015,    "base": 1_302_250_000, "lower": 4_000_000_000_000, "name": "پله ۱۰ (۴ تا ۴.۳۱ تریلیون ریال)"},
             ]
             for bracket in brackets:
                 if b20 <= bracket["upper"]:
                     c20 = (b20 - bracket["lower"]) * bracket["rate"] + bracket["base"]
                     tier_name = bracket["name"]
                     break
-    return {"c20": c20, "c21": c20 * 0.50, "c22": c20 + (c20 * 0.50), "tier": tier_name}
 
-# 3. PDF Generator Helper (رفع خطای ساختاری آرگومان و استریم امن)
+    c20_val = c20
+    c21_val = c20 * 0.50
+    c22_val = c20 + c21_val
+    return {"c20": c20_val, "c21": c21_val, "c22": c22_val, "tier": tier_name}
+
+# 3. PDF Generator Helper (تولید گزارش چاپی پی‌دی‌اف)
 def generate_pdf_report(b20, res):
     pdf = FPDF()
     pdf.add_page()
     
+    # درج خودکار لوگوی رسمی در بالای صفحه
     if os.path.exists(LOGO_PATH):
         pdf.image(LOGO_PATH, x=15, y=12, w=22)
     
     if os.path.exists(FONT_PATH):
         pdf.add_font("Vazir", style="", fname=FONT_PATH)
         pdf.set_font("Vazir", size=13)
-        # اجرای موتور متون راست‌چین نیازمند بسته uharfbuzz در سرور است
+        # متون فارسی نیاز به شبیه‌ساز اشکال متنی دارند (نیازمند پکیج uharfbuzz)
         pdf.set_text_shaping(use_shaping_engine=True, direction="rtl")
     else:
         pdf.set_font("Helvetica", size=12)
@@ -129,7 +165,7 @@ def generate_pdf_report(b20, res):
     
     return pdf.output()
 
-# 4. Streamlit UI Layout
+# 4. Streamlit UI Layout (رابط کاربری و دکمه دانلود نهایی)
 st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
@@ -149,6 +185,7 @@ if b20_input > 0:
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
+    # کادرهای مالی یکپارچه با ساختار تگ‌های HTML بسته شده و کاملاً استاندارد
     st.markdown(f"""
         <div class="result-card">
             <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
@@ -164,9 +201,11 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # کنترل خطا و دکمه رسمی دانلود استریم شده
+    # پردازش امن داده‌های باینری و رفع خطای کلاس bytearray
     try:
-        pdf_bytes = generate_pdf_report(b20_input, results)
+        pdf_data = generate_pdf_report(b20_input, results)
+        pdf_bytes = bytes(pdf_data)  # تبدیل قطعی قالب داده برای Streamlit
+        
         st.download_button(
             label="🔵 دانلود رسمی گزارش PDF",
             data=pdf_bytes,
