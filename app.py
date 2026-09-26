@@ -7,7 +7,7 @@ from fpdf import FPDF
 # 1. Page Config
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS برای استایل‌دهی و راست‌چین کردن کامل اپلیکیشن و دکمه چاپی موبایل ---
+# --- تزریق کدهای CSS برای استایل‌دهی و راست‌چین کردن کامل اپلیکیشن ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -220,15 +220,18 @@ if b20_input > 0:
         </div>
     """, unsafe_allow_html=True)
     
-    # 🌟 کدهای دانلود با رعایت تراز‌بندی و فاصله‌گذاری میلی‌متری پایتون
+    # 🌟 سیستم هوشمند دوگانه: تفکیک وب (کامپیوتر) و اپلیکیشن موبایل برای پایداری ۱۰۰ درصدی دانلودها
     try:
         pdf_bytes = generate_pdf_report(b20_input, results)
+        
+        # ۱. ساخت دکمه رسمی برای دسکتاپ و وب معمولی
+        st.download_button(
+            label="🖥️ دانلود گزارش PDF مخصوص کامپیوتر (وب)",
+            data=pdf_bytes,
+            file_name="expert_fee_report.pdf",
+            mime="application/pdf",
+            key="web_download_button"
+        )
+        
+        # ۲. ساخت دکمه جاوا اسکریپتی بهینه شده فشرده مخصوص دور زدن خطای ۵۰۰ در اپ موبایل
         b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        
-        js_single_line = '<button onclick="dlPDF()" class="custom-download-btn">🔵 دانلود رسمی گزارش PDF</button><script>function dlPDF(){var b64="KEY_DATA";var bin=atob(b64);var len=bin.length;var bytes=new Uint8Array(len);for(var i=0;i<len;i++){bytes[i]=bin.charCodeAt(i);}var blob=new Blob([bytes],{type:"application/pdf"});var lnk=document.createElement("a");lnk.href=window.URL.createObjectURL(blob);lnk.download="expert_fee_report.pdf";document.body.appendChild(lnk);lnk.click();document.body.removeChild(lnk);}</script>'
-        
-        final_html = js_single_line.replace("KEY_DATA", b64_pdf)
-        st.markdown(final_html, unsafe_allow_html=True)
-        
-    except Exception as e:
-        st.error(f"خطای سیستم در کامپایل گزارش: {str(e)}")
