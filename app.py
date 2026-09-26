@@ -4,10 +4,10 @@ import os
 import base64
 from fpdf import FPDF
 
-# 1. Page Config
+# 1. Page Config (عنوان رسمی در تب مرورگر)
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای جدید و قطعی برای زرد کردن کادر ورودی متن ---
+# --- تزریق کدهای CSS برای زرد کردن کادر و راست‌چین کردن کل اپلیکیشن ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -20,7 +20,7 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* 🌟 زرد کردن قطعی کادر ورودی با شناسه‌های والد استریم‌لیت */
+    /* زرد کردن قطعی کادر ورودی پایتون */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -28,19 +28,22 @@ st.markdown("""
         font-weight: bold !important;
         border-radius: 12px !important;
         border: 2px solid #f1c40f !important; /* حاشیه طلایی/زرد */
-        background-color: #fef9e7 !important; /* پس‌زمینه زرد ملایم حسابداری */
+        background-color: #fef9e7 !important; /* پس‌زمینه زرد ملایم مالی */
         color: #2c3e50 !important;
         padding: 14px !important;
     }
     
-    /* استایل کادرهای مالی خروجی نتایج */
+    /* استایل کادرهای مالی خروجی نتایج (زیر هم) */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
         border-radius: 10px !important;
         padding: 18px !important;
-        margin: 12px 0 !important;
+        margin: 15px 0 !important; /* فاصله عمودی مناسب برای چیدمان زیر هم */
         box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+    }
+    .result-card.surcharge {
+        border-right: 6px solid #b33939 !important;
     }
     .result-card.total {
         border-right: 6px solid #2e5b18 !important;
@@ -53,7 +56,7 @@ st.markdown("""
         font-weight: bold !important;
     }
     .card-value {
-        font-size: 22px !important;
+        font-size: 24px !important;
         font-weight: bold !important;
         color: #212529 !important;
     }
@@ -79,16 +82,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# آدرس‌دهی فونت و لوگو برای سازگاری ابری
 FONT_PATH = "Vazirmatn-Regular.ttf"
-
-# تابع تبدیل عدد به حروف فارسی ساده
-def num_to_words(num: float) -> str:
-    # این تابع برای مبالغ رایج کارشناسی جهت تایید چشمی کاربر است
-    if num == 1_000_000_000: return "یک میلیارد"
-    if num == 10_000_000_000: return "ده میلیارد"
-    if num == 100_000_000: return "صد میلیون"
-    if num == 500_000_000: return "پانصد میلیون"
-    return ""
+LOGO_PATH = "logo.png"
 
 # 2. Main Logic Function
 def calculate_all_values(b20: float) -> dict:
@@ -126,10 +122,14 @@ def calculate_all_values(b20: float) -> dict:
     c22_val = c20 + c21_val
     return {"c20": c20_val, "c21": c21_val, "c22": c22_val, "tier": tier_name}
 
-# 3. PDF Generator Helper
+# 3. PDF Generator Helper (تولید فایل چاپی مجهز به لوگوی رسمی کانون)
 def generate_pdf_report(b20, res):
     pdf = FPDF()
     pdf.add_page()
+    
+    # 🌟 قرار دادن هوشمند لوگو در بالای سمت چپ صفحه در صورت وجود فایل تصویر
+    if os.path.exists(LOGO_PATH):
+        pdf.image(LOGO_PATH, x=15, y=10, w=22) # عرض ۲۲ میلی‌متر استاندارد اداری
     
     if os.path.exists(FONT_PATH):
         pdf.add_font("Vazir", style="", fname=FONT_PATH)
@@ -138,40 +138,44 @@ def generate_pdf_report(b20, res):
     else:
         pdf.set_font("Helvetica", size=12)
     
-    pdf.set_draw_color(31, 78, 120)
-    pdf.line(15, pdf.get_y() + 15, 195, pdf.get_y() + 15)
-    
+    # تیتر اصلی گزارش رسمی (راست‌چین)
     pdf.set_text_color(31, 78, 120)
-    pdf.cell(180, 10, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
+    pdf.cell(180, 12, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
     pdf.ln(2)
     
     pdf.set_text_color(89, 89, 89)
-    pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتی", ln=True, align="R")
+    pdf.cell(180, 8, txt="تنظیم کننده: محمد هادی حجتـی", ln=True, align="R")
     pdf.cell(180, 8, txt=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
     pdf.ln(5)
     
-    pdf.ln(8)
+    # خط جداکننده افقی سرمه‌ای
+    pdf.set_draw_color(31, 78, 120)
+    pdf.line(15, pdf.get_y() + 5, 195, pdf.get_y() + 5)
+    pdf.ln(12)
+    
+    # جزییات ارقام محاسباتی
     pdf.set_text_color(38, 38, 38)
     pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
     pdf.cell(180, 10, txt=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
     pdf.cell(180, 10, txt=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
     pdf.ln(5)
     
+    # خط جداکننده طوسی کم‌رنگ
     pdf.set_draw_color(191, 191, 191)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(6)
     
+    # جمع کل نهایی به رنگ سبز تیره
     pdf.set_text_color(46, 91, 24)
     pdf.cell(180, 12, txt=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
     
     return bytes(pdf.output())
 
 # 4. Streamlit UI Layout
-st.title("📊 محاسبه دستمزد کارشناسی ۱۴آ۵")
+st.title("📊 محاسبه دستمزد کارشناسی ۱۴۰۵")
 st.markdown("<p style='color: #6c757d; font-size: 14px;'>🔒 محیط کاملاً محلی و ایمن مالی | تنظیم‌کننده: <b>محمد هادی حجتی</b></p>", unsafe_allow_html=True)
 st.write("---")
 
-# مقدار اولیه برای پردازش اول
 initial_val = "1000000000"
 b20_str = st.text_input("مقدار ورودی مبنا را به ریال وارد کنید (اعداد را بدون فاصله وارد کنید):", value=initial_val)
 
@@ -182,23 +186,33 @@ if b20_str:
         b20_input = float(clean_str)
 
 if b20_input > 0:
-    # 🌟 بازگرداندن بخش «مبلغ پردازش شده» به صورت بسیار بزرگ، تفکیک‌شده و خوانا بالای نتایج
     formatted_preview = f"{int(b20_input):,}"
-    words_preview = num_to_words(b20_input)
-    words_text = f" ({words_preview} ریال)" if words_preview else ""
-    
-    st.markdown(f'<div class="processed-amount">🔹 مبلغ پردازش شده: {formatted_preview} ریال {words_text}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="processed-amount">🔹 مبلغ پردازش شده: {formatted_preview} ریال</div>', unsafe_allow_html=True)
 
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown(f'<div class="result-card"><div class="card-title">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    # چیدمان ستونی و زیر هم خروجی‌ها طبق آخرین درخواست شما
+    st.markdown(f"""
+        <div class="result-card">
+            <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
+            <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
         
-    st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 28px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f"""
+        <div class="result-card surcharge">
+            <div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div>
+            <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+        
+    st.markdown(f"""
+        <div class="result-card total">
+            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div>
+            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
     
     st.write("")
     try:
