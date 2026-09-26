@@ -4,10 +4,10 @@ import os
 import base64
 from fpdf import FPDF
 
-# 1. Page Config (عنوان رسمی در تب مرورگر)
+# 1. Page Config
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
 
-# --- تزریق کدهای CSS برای زرد کردن کادر و راست‌چین کردن کل اپلیکیشن ---
+# --- تزریق کدهای CSS برای استایل زرد و راست‌چین کردن کل اپلیکیشن ---
 st.markdown("""
     <style>
     @import url('https://jsdelivr.net');
@@ -20,15 +20,15 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* زرد کردن قطعی کادر ورودی پایتون */
+    /* زرد کردن کادر ورودی پایتون */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
         font-size: 20px !important;
         font-weight: bold !important;
         border-radius: 12px !important;
-        border: 2px solid #f1c40f !important; /* حاشیه طلایی/زرد */
-        background-color: #fef9e7 !important; /* پس‌زمینه زرد ملایم مالی */
+        border: 2px solid #f1c40f !important;
+        background-color: #fef9e7 !important;
         color: #2c3e50 !important;
         padding: 14px !important;
     }
@@ -39,7 +39,7 @@ st.markdown("""
         border-right: 6px solid #1f4e78 !important;
         border-radius: 10px !important;
         padding: 18px !important;
-        margin: 15px 0 !important; /* فاصله عمودی مناسب برای چیدمان زیر هم */
+        margin: 15px 0 !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
     }
     .result-card.surcharge {
@@ -82,7 +82,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# آدرس‌دهی فونت و لوگو برای سازگاری ابری
 FONT_PATH = "Vazirmatn-Regular.ttf"
 LOGO_PATH = "logo.png"
 
@@ -122,14 +121,13 @@ def calculate_all_values(b20: float) -> dict:
     c22_val = c20 + c21_val
     return {"c20": c20_val, "c21": c21_val, "c22": c22_val, "tier": tier_name}
 
-# 3. PDF Generator Helper (تولید فایل چاپی مجهز به لوگوی رسمی کانون)
+# 3. PDF Generator Helper
 def generate_pdf_report(b20, res):
     pdf = FPDF()
     pdf.add_page()
     
-    # 🌟 قرار دادن هوشمند لوگو در بالای سمت چپ صفحه در صورت وجود فایل تصویر
     if os.path.exists(LOGO_PATH):
-        pdf.image(LOGO_PATH, x=15, y=10, w=22) # عرض ۲۲ میلی‌متر استاندارد اداری
+        pdf.image(LOGO_PATH, x=15, y=10, w=22)
     
     if os.path.exists(FONT_PATH):
         pdf.add_font("Vazir", style="", fname=FONT_PATH)
@@ -138,7 +136,6 @@ def generate_pdf_report(b20, res):
     else:
         pdf.set_font("Helvetica", size=12)
     
-    # تیتر اصلی گزارش رسمی (راست‌چین)
     pdf.set_text_color(31, 78, 120)
     pdf.cell(180, 12, txt="گزارش رسمی محاسبات مالی دستمزد کارشناسی", ln=True, align="R")
     pdf.ln(2)
@@ -148,24 +145,20 @@ def generate_pdf_report(b20, res):
     pdf.cell(180, 8, txt=f"محدوده محاسبه: {res['tier']}", ln=True, align="R")
     pdf.ln(5)
     
-    # خط جداکننده افقی سرمه‌ای
     pdf.set_draw_color(31, 78, 120)
     pdf.line(15, pdf.get_y() + 5, 195, pdf.get_y() + 5)
     pdf.ln(12)
     
-    # جزییات ارقام محاسباتی
     pdf.set_text_color(38, 38, 38)
     pdf.cell(180, 10, txt=f"• مقدار ورودی مبنا: {b20:,.0f} ریال", ln=True, align="R")
     pdf.cell(180, 10, txt=f"• دستمزد پایه (طبق تعرفه): {res['c20']:,.0f} ریال", ln=True, align="R")
     pdf.cell(180, 10, txt=f"• افزایش حسابرسی (پنجاه درصد): {res['c21']:,.0f} ریال", ln=True, align="R")
     pdf.ln(5)
     
-    # خط جداکننده طوسی کم‌رنگ
     pdf.set_draw_color(191, 191, 191)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(6)
     
-    # جمع کل نهایی به رنگ سبز تیره
     pdf.set_text_color(46, 91, 24)
     pdf.cell(180, 12, txt=f"◄ جمع کل حق‌الزحمه قابل پرداخت: {res['c22']:,.0f} ریال", ln=True, align="R")
     
@@ -192,35 +185,22 @@ if b20_input > 0:
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # چیدمان ستونی و زیر هم خروجی‌ها طبق آخرین درخواست شما
-    st.markdown(f"""
-        <div class="result-card">
-            <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
-            <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
-        
-    st.markdown(f"""
-        <div class="result-card surcharge">
-            <div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div>
-            <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
-        
-    st.markdown(f"""
-        <div class="result-card total">
-            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div>
-            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+    # نمایش ستونی نتایج زیر هم
+    st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="result-card surcharge"><div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 30px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
     
-    st.write("")
+    st.write("---")
+    st.subheader("📋 پیش‌نمایش و نسخه چاپی گزارش رسمی")
+    
     try:
         pdf_data = generate_pdf_report(b20_input, results)
-        st.download_button(label="📥 دانلود مستقیم فایل PDF گزارش رسمی", data=pdf_data, file_name="financial_report.pdf", mime="application/pdf", use_container_width=True)
         
-        b64 = base64.b64encode(pdf_data).decode()
-        href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf" style="display: inline-block; padding: 12px; color: white; background-color: #1f4e78; text-decoration: none; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 10px; width: 100%;">🔗 لینک کمکی دانلود PDF (مخصوص مرورگر گوشی)</a>'
-        st.markdown(href, unsafe_allow_html=True)
+        # 🌟 ترفند اصلی: نمایش مستقیم و زنده PDF در برگه بدون نیاز به دانلود دکمه‌ای
+        base64_pdf = base64.b64encode(pdf_data).decode('utf-8')
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500" style="border:1px solid #dfe4ea; border-radius:8px;"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
+        st.caption("☝️ گزارش بالا به صورت زنده تولید شده است. برای پرینت یا ذخیره، از دکمه‌های منوی داخل کادر بالا یا آیکون اشتراک‌گذاری گوشی استفاده کنید.")
+        
     except Exception as e:
         st.error(f"خطا در تولید فایل PDF: {e}")
