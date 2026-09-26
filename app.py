@@ -1,7 +1,7 @@
 import streamlit as st
 import io
 import os
-import streamlit.components.v1 as components # 🌟 اضافه شدن ابزار بومی اجرای جاوااسکریپت
+import streamlit.components.v1 as components
 
 # 1. Page Config
 st.set_page_config(page_title="محاسبه دستمزد کارشناسی ۱۴۰۵", page_icon="📊", layout="centered")
@@ -19,7 +19,7 @@ st.markdown("""
         background-color: #f8f9fa !important;
     }
     
-    /* زرد کردن قطعی کادر ورودی عدد */
+    /* زرد کردن قطعی کادر ورودی عدد حسابداری */
     div[data-testid="stTextInput"] input {
         direction: LTR !important;
         text-align: center !important;
@@ -32,7 +32,7 @@ st.markdown("""
         padding: 14px !important;
     }
     
-    /* استایل کادرهای مالی خروجی نتایج (به صورت زیر هم) */
+    /* استایل کادرهای مالی خروجی نتایج (به صورت ستونی و زیر هم) */
     .result-card {
         background-color: #ffffff !important;
         border-right: 6px solid #1f4e78 !important;
@@ -40,6 +40,7 @@ st.markdown("""
         padding: 18px !important;
         margin: 15px 0 !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+        display: block !important; /* تضمین نمایش کادرها در حالت وب */
     }
     .result-card.surcharge {
         border-right: 6px solid #b33939 !important;
@@ -60,7 +61,7 @@ st.markdown("""
         color: #212529 !important;
     }
     
-    /* کادر مبلغ پردازش شده با کما */
+    /* کادر تفکیک مبالغ پردازش شده */
     .processed-amount {
         background-color: #ebf5fb;
         border-left: 5px solid #2980b9;
@@ -79,15 +80,16 @@ st.markdown("""
         text-align: right !important;
     }
     
-    /* 🖨️ استایل چاپی: مخفی کردن کادرهای اضافی سیستم در زمان چاپ روی کاغذ */
+    /* 🖨️ تنظیمات اختصاصی زمان پرینت (مخفی کردن بخش‌های اضافی فقط روی برگه کاغذ) */
     @media print {
-        div[data-testid="stTextInput"], .processed-amount, iframe, header, footer, [data-testid="stHeader"], .stSidebar {
+        div[data-testid="stTextInput"], .processed-amount, iframe, header, footer, [data-testid="stHeader"] {
             display: none !important;
         }
         .result-card {
             box-shadow: none !important;
             border: 1px solid #ccc !important;
             margin: 10px 0 !important;
+            background-color: white !important;
         }
     }
     </style>
@@ -149,15 +151,31 @@ if b20_input > 0:
     results = calculate_all_values(b20_input)
     st.info(f"🔍 **محدوده شناسایی‌شده:** {results['tier']}")
     
-    # کادرهای مالی جدید به صورت ستونی و منظم زیر هم
-    st.markdown(f'<div class="result-card"><div class="card-title">دستمزد پایه (طبق تعرفه)</div><div class="card-value">{results["c20"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="result-card surcharge"><div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div><div class="card-value" style="color: #b33939;">{results["c21"]:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="result-card total"><div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div><div class="card-value" style="color: #2e5b18; font-size: 30px;">{results["c22"]:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div></div>', unsafe_allow_html=True)
+    # کادرهای مالی شکیل به صورت ردیف‌های ستونی زیر هم (کاملاً اصلاح‌شده برای نمایش قطعی در وب)
+    st.markdown(f"""
+        <div class="result-card">
+            <div class="card-title">دستمزد پایه (طبق تعرفه)</div>
+            <div class="card-value">{results['c20']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+        
+    st.markdown(f"""
+        <div class="result-card surcharge">
+            <div class="card-title" style="color: #b33939;">افزایش ۵۰ درصدی (حسابرسی)</div>
+            <div class="card-value" style="color: #b33939;">{results['c21']:,.0f} <span style="font-size:14px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+        
+    st.markdown(f"""
+        <div class="result-card total">
+            <div class="card-title" style="color: #2e5b18; font-weight: bold;">◄ جمع کل حق‌الزحمه قابل پرداخت</div>
+            <div class="card-value" style="color: #2e5b18; font-size: 30px;">{results['c22']:,.0f} <span style="font-size:16px; font-weight:normal;">ریال</span></div>
+        </div>
+    """, unsafe_allow_html=True)
     
     st.write("---")
     
-    # 🌟 راه حل قطعی و نهایی پرینت وب و گوشی: ارجاع دستور چاپ به والد اصلی مرورگر (parent.window.print)
-    # این کد دکمه بزرگ سبز رنگ را با بالاترین استایل مالی تزریق کرده و در لحظه کلیک، مستقیماً پنجره چاپ ویندوز یا موبایل را صدا می‌زند.
+    # دکمه سبز رنگ پرینت مستقیم (سازگار با وب و موبایل)
     print_button_html = """
     <style>
     .native-print-btn {
